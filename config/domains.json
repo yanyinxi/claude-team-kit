@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "required": ["detect", "source_paths"],
+    "properties": {
+      "detect": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Detection patterns for this domain"
+      },
+      "source_paths": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Source code paths for this domain"
+      },
+      "test_paths": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Test paths for this domain"
+      },
+      "build_commands": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Build commands for this domain"
+      }
+    }
+  }
+}

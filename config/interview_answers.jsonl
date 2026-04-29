@@ -1,0 +1,17 @@
+{"q":1,"answer":"A","topic":"项目定位","detail":"企业级 Claude Code 团队协作框架 — 面向公司 20 人团队，强调标准化、安全合规、团队共享"}
+{"q":2,"answer":"B","topic":"项目名称风格","detail":"功能描述类，如 claude-team-kit、dev-claude-ops"}
+{"q":3,"answer":"A","topic":"仓库结构","detail":"Monorepo — 一个仓库包含核心框架+技能包+进化引擎，安装简单"}
+{"q":4,"answer":"A","topic":"开源协议","detail":"MIT — 最宽松，允许商用闭源衍生"}
+{"q":5,"answer":"A","topic":"与标杆项目关系","detail":"集成融合 — 深入分析三个项目核心机制，精华能力抽取融合进新项目，自成一体不依赖上游"}
+{"q":6,"answer":"D","topic":"分发优先级","detail":"多通道平等 — npm/git clone/plugin 同等对待，用户按环境选择"}
+{"q":7,"answer":"A","topic":"运行环境","detail":"纯 Node.js — 完全跨平台，Hooks 和脚本全部 Node.js 重写"}
+{"q":8,"answer":"B","topic":"操作系统支持","detail":"macOS + Linux + Windows Git Bash，覆盖主流开发环境"}
+{"q":9,"answer":"A","topic":"Plugin发布","detail":"公共 marketplace — 发布到 anthropics/skills，全球开发者可安装"}
+{"q":10,"answer":"A+D","topic":"安装粒度","detail":"支持一键全装 + 按语言选择性安装（--profile java/vue/python）"}
+{"q":11,"answer":"B+D","topic":"Skill上限","detail":"软约束设计原则（~20个）+ context budget 控制总加载量，不是硬编码数量限制"}
+{"q":12,"answer":"D","topic":"Skill语言分类原因","detail":"工具链+安全规则+最佳实践差异，核心是 context budget 效率，每次只注入当前项目需要的语言知识"}
+{"q":13,"answer":"D","topic":"通用vs语言skill分配","detail":"按加载频率动态 — 通用 skill 常驻 context，语言 skill 仅在检测到对应项目类型时加载"}
+{"q":14,"answer":"B","topic":"新语言扩展","detail":"Skill 内部按需加载 — 利用 resources 机制，skill 保持通用名称（~20个），按语言分支加载不同资源文件"}
+{"q":15,"answer":"A","topic":"现有Skill去留","detail":"14个全保留 + 新增6个Superpowers工作流skill ≈ 20"}
+{"q":16,"answer":"D","topic":"Token消耗主因","detail":"全部加起来 — session 启动加载全套 rules+skills metadata+agent定义+进化状态，干活前已大量消耗"}
+{"q":17,"answer":"E","topic":"Token优化策略","detail":"组合拳 — 模型降级+Context裁剪+Progressive disclosure+Reference-based 全上"}

@@ -1,0 +1,33 @@
+{
+  "initialized_at": "2026-04-26",
+  "system": {
+    "total_evolutions": 0,
+    "total_sessions": 0,
+    "last_evolution": null
+  },
+  "circuit_breaker": {
+    "rule": {
+      "backend": {
+        "consecutive_degradations": 0,
+        "status": "CLOSED"
+      }
+    },
+    "agent": {
+      "backend-developer": {
+        "consecutive_degradations": 0,
+        "status": "CLOSED"
+      }
+    }
+  },
+  "skills": {},
+  "agents": {},
+  "rules": {},
+  "memory": {
+    "total_files": 0,
+    "pending_signals": 0,
+    "last_updated": null
+  },
+  "trigger_counts": {
+    "memory:pending_signals": 492
+  }
+}

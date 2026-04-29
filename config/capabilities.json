@@ -1,0 +1,65 @@
+{
+  "_comment": "Agent 能力清单，orchestrator 读取此文件了解各 Agent 的能力边界",
+  "agents": {
+    "backend-developer": {
+      "primary_skills": ["Java", "Spring Boot", "MyBatis-Plus", "PostgreSQL"],
+      "file_domains": ["main/backend/", "main/docs/"],
+      "parallel_safe": true,
+      "produces": "后端代码、API 端点、数据库迁移",
+      "requires_input": "API 数据契约"
+    },
+    "frontend-developer": {
+      "primary_skills": ["Vue 3", "TypeScript", "Vite", "Element Plus"],
+      "file_domains": ["main/frontend/"],
+      "parallel_safe": true,
+      "produces": "前端组件、页面、路由",
+      "requires_input": "API 数据契约"
+    },
+    "code-reviewer": {
+      "primary_skills": ["代码审查", "安全审计", "最佳实践"],
+      "file_domains": [],
+      "parallel_safe": true,
+      "produces": "审查报告、改进建议",
+      "requires_input": "已完成或进行中的代码"
+    },
+    "test": {
+      "primary_skills": ["测试规划", "单元测试", "E2E 测试"],
+      "file_domains": ["main/backend/src/test/", "main/frontend/src/__tests__/"],
+      "parallel_safe": true,
+      "produces": "测试代码、测试报告",
+      "requires_input": "实现的代码"
+    },
+    "tech-lead": {
+      "primary_skills": ["架构设计", "技术选型", "API 设计"],
+      "file_domains": [],
+      "parallel_safe": false,
+      "run_first": true,
+      "produces": "架构方案、API 契约",
+      "requires_input": "PRD"
+    },
+    "product-manager": {
+      "primary_skills": ["需求分析", "PRD 生成", "任务拆分"],
+      "file_domains": [],
+      "parallel_safe": false,
+      "run_first": true,
+      "produces": "PRD 文档、用户故事",
+      "requires_input": "用户需求描述"
+    },
+    "orchestrator": {
+      "primary_skills": ["任务协调", "Agent 调度", "进度追踪"],
+      "file_domains": [],
+      "parallel_safe": false,
+      "is_coordinator": true,
+      "produces": "任务分配方案、进度报告",
+      "requires_input": "用户指令"
+    }
+  },
+  "parallel_constraints": {
+    "max_parallel_agents": 5,
+    "contract_required_combos": [
+      ["backend-developer", "frontend-developer"]
+    ],
+    "serial_only": ["product-manager", "tech-lead"],
+    "post_development": ["code-reviewer", "test", "evolver"]
+  }
+}

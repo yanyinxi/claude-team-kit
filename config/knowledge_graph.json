@@ -1,0 +1,74 @@
+{
+  "nodes": [
+    {
+      "id": "best_practice_001",
+      "type": "best_practice",
+      "domain": "fullstack",
+      "title": "契约优先并行开发",
+      "description": "Updated description",
+      "evidence": [
+        "collaboration.md 第 23-51 行"
+      ],
+      "success_rate": 0.92,
+      "avg_reward": 8.5,
+      "tags": [
+        "parallel",
+        "contract",
+        "api",
+        "collaboration"
+      ],
+      "updated_at": "2026-04-29T23:41:48.365215"
+    },
+    {
+      "id": "best_practice_002",
+      "type": "best_practice",
+      "domain": "backend",
+      "title": "SQL 查询三重白名单",
+      "description": "字段名、操作符、返回字段三重白名单校验，拒绝字符串拼接",
+      "evidence": [
+        "system-design.md"
+      ],
+      "success_rate": 0.95,
+      "avg_reward": 9.0,
+      "tags": [
+        "security",
+        "sql",
+        "whitelist"
+      ]
+    },
+    {
+      "id": "pattern_001",
+      "type": "pattern",
+      "domain": "fullstack",
+      "title": "code-reviewer 与开发并行",
+      "description": "code-reviewer 和前端开发可以并行运行（互不依赖），总体节省约 40% 时间",
+      "evidence": [
+        "unknown.md 第 26-28 行"
+      ],
+      "success_rate": 0.85,
+      "avg_reward": 7.8,
+      "tags": [
+        "parallel",
+        "review",
+        "efficiency"
+      ]
+    },
+    {
+      "type": "best_practice",
+      "title": "Test Node",
+      "description": "A test node",
+      "id": "best_practice_004",
+      "created_at": "2026-04-29T23:41:38.013773",
+      "updated_at": "2026-04-29T23:41:38.013818"
+    }
+  ],
+  "edges": [
+    {
+      "from": "pattern_001",
+      "to": "best_practice_001",
+      "relation": "depends_on",
+      "strength": 0.8,
+      "description": "审查并行依赖契约定义"
+    }
+  ]
+}

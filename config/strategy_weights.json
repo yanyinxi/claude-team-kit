@@ -1,0 +1,32 @@
+{
+  "_comment": "策略领域权重，由 Stop hook 的 EMA 更新维护。策略选择器读取此文件做领域偏置。",
+  "backend": 5.99,
+  "frontend": 5.0,
+  "fullstack": 5.0,
+  "testing": 5.0,
+  "docs": 5.0,
+  "config": 5.0,
+  "metadata": {
+    "backend": {
+      "last_updated": "2026-04-28T21:14:15.713309",
+      "last_session_score": 6.0,
+      "last_signals": {
+        "productivity": "sprawling",
+        "has_tests": false,
+        "test_ratio": 0.0,
+        "volume_lines": 638,
+        "agents_used_count": 6,
+        "agents_unique": [
+          "Explore",
+          "backend-developer",
+          "frontend-developer",
+          "memory-evolver",
+          "oracle",
+          "rule-evolver"
+        ],
+        "commits_in_session": true
+      },
+      "execution_count": 14
+    }
+  }
+}

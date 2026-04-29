@@ -1,0 +1,92 @@
+{
+  "description": "Claude Team Kit Hooks",
+  "hooks": {
+    "SessionStart": [{
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/load_evolution_state.py",
+        "timeout": 5
+      }]
+    }],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect_violations.py",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{
+          "type": "command",
+          "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/bin/safety-check.sh",
+          "timeout": 3
+        }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [{
+          "type": "command",
+          "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/bin/quality-gate.sh",
+          "timeout": 5
+        }]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [{
+          "type": "command",
+          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect_agent_launch.py",
+          "timeout": 5
+        }]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [{
+          "type": "command",
+          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect_skill_usage.py",
+          "timeout": 5
+        }]
+      }
+    ],
+    "PostToolUseFailure": [{
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect_tool_failure.py",
+        "timeout": 3
+      }]
+    }],
+    "UserPromptSubmit": [{
+      "matcher": "*",
+      "hooks": [{
+        "type": "command",
+        "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/detect_feedback.py",
+        "timeout": 3
+      }]
+    }],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/session_evolver.py",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/strategy_updater.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

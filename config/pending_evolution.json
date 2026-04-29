@@ -1,0 +1,35 @@
+{
+  "pending_triggers": [
+    {
+      "dimension": "memory",
+      "target": "pending_signals",
+      "reason": "2 个待处理信号: correction, confirmation",
+      "priority": 1.0,
+      "last_dispatched_session": "unknown"
+    }
+  ],
+  "feedback_signals": [
+    {
+      "type": "correction",
+      "content": "你深度检查和思考一下之前的动作。",
+      "timestamp": "2026-04-27T11:17:58.663788",
+      "session_id": "0e8c0a25-9785-433c-ac68-1449b3b9332e"
+    },
+    {
+      "type": "confirmation",
+      "content": "对的。 不是从零设计自进化系统，而是把已有的进化系统从项目绑定（Java/Vue）中解耦出来，变成通用插件可分发。",
+      "timestamp": "2026-04-29T20:36:46.841927",
+      "session_id": "ses_22729bfa8ffeFDp2W67vZA9p6G"
+    },
+    {
+      "type": "preference",
+      "content": "stop at first result - be exhaustive.",
+      "timestamp": "2026-04-29T22:57:28.216162",
+      "session_id": "ses_22653845bffeDFJge1kRrdaJFM"
+    }
+  ],
+  "last_check": "2026-04-29T23:02:39.172554",
+  "last_signal_at": "2026-04-29T22:57:28.216214",
+  "session_id": "ses_22653845bffeDFJge1kRrdaJFM",
+  "last_processed": "2026-04-28T18:19:38.426655"
+}

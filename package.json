@@ -1,0 +1,10 @@
+{
+  "name": "claude-team-kit",
+  "version": "0.1.0",
+  "description": "Claude Code 多 Agent 工作流编排 + 四维度自进化插件",
+  "main": "index.js",
+  "files": [".claude-plugin/", "agents/", "skills/", "hooks/", "rules/", "lib/", "evolution/", "config/", "memory/", "tests/", "CLAUDE.md"],
+  "keywords": ["claude-code", "claude-code-plugin", "workflow", "multi-agent", "self-evolution"],
+  "license": "MIT",
+  "engines": { "node": ">=18" }
+}
