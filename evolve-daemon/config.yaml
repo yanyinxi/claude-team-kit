@@ -1,0 +1,35 @@
+# evolve-daemon 配置文件
+# 自进化守护进程 — 独立于 Claude Code 运行
+
+daemon:
+  schedule: "*/30 * * * *"           # cron: 每 30 分钟检查一次
+  idle_trigger_minutes: 120          # 空闲触发: 120分钟无新会话后触发
+  extract_timeout_seconds: 5         # 语义提取超时
+
+thresholds:
+  min_new_sessions: 5               # 最少新会话数才触发分析
+  min_same_pattern_corrections: 3   # 同一 target 被纠正 ≥ 3 次触发
+  max_hours_since_last_analyze: 6   # 最长分析间隔（强制触发）
+
+claude_api:
+  extract_model: "claude-haiku-4-5-20251001"    # 语义提取用（成本 $0.0001/次）
+  extract_max_tokens: 512
+  extract_temperature: 0.1
+  analyze_model: "claude-sonnet-4-6"            # 深度分析用
+  analyze_max_tokens: 4096
+  analyze_temperature: 0.3
+
+safety:
+  max_proposals_per_day: 3          # 每天最多生成提案数
+  auto_close_days: 7                # 未处理提案自动关闭天数
+  breaker:                          # 熔断：同一 target 连续被拒 → 暂停
+    max_consecutive_rejects: 3
+    pause_days: 30
+
+paths:
+  data_dir: ".claude/data"
+  proposals_dir: ".claude/proposals"
+  skills_dir: "skills"
+  agents_dir: "agents"
+  rules_dir: "rules"
+  instinct_dir: "instinct"

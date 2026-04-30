@@ -1,6 +1,16 @@
 {
-  "description": "Claude Team Kit — 精简 Hook 配置",
+  "description": "Claude Team Kit v2 — Hook 配置",
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [{
+          "type": "command",
+          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/context-injector.py",
+          "timeout": 5
+        }]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Bash",
@@ -17,6 +27,42 @@
         "hooks": [{
           "type": "command",
           "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/bin/quality-gate.sh",
+          "timeout": 10
+        }]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [{
+          "type": "command",
+          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect-agent.py",
+          "timeout": 5
+        }]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [{
+          "type": "command",
+          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect-skill.py",
+          "timeout": 5
+        }]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [{
+          "type": "command",
+          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect-failure.py",
+          "timeout": 5
+        }]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [{
+          "type": "command",
+          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect-session.py",
           "timeout": 10
         }]
       }
