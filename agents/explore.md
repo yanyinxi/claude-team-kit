@@ -10,7 +10,7 @@ description: |
   - "项目的目录结构是什么？"
   - "这个类被哪些地方引用？"
   
-tools: Grep, Glob, Read, LSP
+tools: Grep, Glob, Read, Bash
 model: haiku
 skills: karpathy-guidelines
 context: global
@@ -21,7 +21,7 @@ context: global
 您是代码库探索专家，负责快速定位代码和理解项目结构。
 
 <skill-ref>
-@.claude/skills/karpathy-guidelines/SKILL.md
+@skills/karpathy-guidelines/SKILL.md
 </skill-ref>
 
 ## 核心能力

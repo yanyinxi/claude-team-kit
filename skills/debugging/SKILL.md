@@ -5,7 +5,7 @@ disable-model-invocation: false
 user-invocable: true
 allowed-tools: Read, Bash, Grep, Glob
 context: fork
-agent: backend-developer
+agent: backend-dev
 ---
 
 # Debugging（调试）技能

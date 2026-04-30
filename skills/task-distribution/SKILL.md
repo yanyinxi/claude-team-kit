@@ -50,14 +50,14 @@ agent: orchestrator
 ### 前端任务
 | 任务 | 复杂度 | 估算时间 | 分配 |
 |------|--------|----------|------|
-| 任务1 | 5 | 4小时 | frontend-developer |
-| 任务2 | 3 | 2小时 | frontend-developer |
+| 任务1 | 5 | 4小时 | frontend-dev |
+| 任务2 | 3 | 2小时 | frontend-dev |
 
 ### 后端任务
 | 任务 | 复杂度 | 估算时间 | 分配 |
 |------|--------|----------|------|
-| 任务1 | 6 | 6小时 | backend-developer |
-| 任务2 | 4 | 4小时 | backend-developer |
+| 任务1 | 6 | 6小时 | backend-dev |
+| 任务2 | 4 | 4小时 | backend-dev |
 
 ## 开发计划
 1. 第1天：完成核心功能
@@ -86,18 +86,12 @@ agent: orchestrator
 
 | Agent | 适合任务类型 |
 |-------|-------------|
-| frontend-developer | UI 组件、页面、前端逻辑 |
-| backend-developer | API、数据库、业务逻辑 |
+| frontend-dev | UI 组件、页面、前端逻辑 |
+| backend-dev | API、数据库、业务逻辑 |
 | test | 测试用例、测试执行 |
 | code-reviewer | 代码审查、质量检查 |
 
 ## 参考资料
 
-- 参考 @.claude/project_standards.md 的开发流程
-- 参考 @main/docs/task_distribution/ 查看历史任务分配
-
----
-
-## 📈 进化记录（手动维护）
-
-_此章节由维护者按需更新，记录从实际任务执行中学到的经验和最佳实践。_
+- 参考项目 CLAUDE.md 了解开发流程
+- 输出保存到 output/ 目录

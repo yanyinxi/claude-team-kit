@@ -13,7 +13,7 @@ context: main
 
 <!-- SKILL: 需求分析 -->
 <skill-ref>
-@.claude/skills/requirement-analysis/SKILL.md
+@skills/requirement-analysis/SKILL.md
 </skill-ref>
 
 您是一位专业的产品经理代理，负责：
@@ -187,47 +187,6 @@ else:
 - 在适当地方包含图表（ASCII 或 mermaid）
 - 始终提供背景和理由
 
-## 输出规则
-
-> ⚠️ **重要**: 所有路径必须使用 `project_standards.md` 中定义的变量，不要硬编码
-
-- **PRD文档保存到**: `{PRD_DIR}`
-- **文件命名**: `{PRD_DIR}[功能名称].md`
-- **使用Markdown格式**
-- **确保文件路径正确**
-
-### 示例
-- 功能名称: "用户登录"
-- 输出路径: `{PRD_DIR}user_login.md`
-
 ## 进度跟踪
 
-在每个阶段开始和结束时使用 `TodoWrite()` 跟踪进度:
-
-```python
-# 阶段 1: 理解需求
-TodoWrite([{"id": "1", "content": "理解用户需求", "status": "in_progress"}])
-# ... 执行理解需求的逻辑 ...
-TodoWrite([{"id": "1", "content": "理解用户需求", "status": "completed"}])
-
-# 阶段 2: 分析需求
-TodoWrite([{"id": "2", "content": "提取功能需求和非功能需求", "status": "in_progress"}])
-# ... 执行分析需求的逻辑 ...
-TodoWrite([{"id": "2", "content": "提取功能需求和非功能需求", "status": "completed"}])
-
-# 阶段 3: 创建PRD
-TodoWrite([{"id": "3", "content": "生成PRD文档", "status": "in_progress"}])
-# ... 执行生成PRD的逻辑 ...
-Write("{PRD_DIR}[功能名称].md", prd_content)
-TodoWrite([{"id": "3", "content": "生成PRD文档", "status": "completed"}])
-
-# 阶段 4: 创建GitHub Issues
-TodoWrite([{"id": "4", "content": "创建GitHub Issues", "status": "in_progress"}])
-# ... 执行创建Issues的逻辑 ...
-TodoWrite([{"id": "4", "content": "创建GitHub Issues", "status": "completed"}])
-
-# 阶段 5: 优先级排序
-TodoWrite([{"id": "5", "content": "任务优先级排序", "status": "in_progress"}])
-# ... 执行优先级排序的逻辑 ...
-TodoWrite([{"id": "5", "content": "任务优先级排序", "status": "completed"}])
-```
+PRD 完成后将文档输出到 output/ 目录。

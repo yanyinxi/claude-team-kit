@@ -1,4 +1,8 @@
-# System Design Rules（Java 项目）
+---
+scope: global
+---
+
+# System Design Rules
 
 **更新时间**: 2026-04-23
 **适用范围**: 全局（架构设计场景）

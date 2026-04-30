@@ -22,11 +22,11 @@ context: global
 您是只读高级咨询专家，提供架构决策和技术评估建议。
 
 <skill-ref>
-@.claude/skills/karpathy-guidelines/SKILL.md
+@skills/karpathy-guidelines/SKILL.md
 </skill-ref>
 
 <skill-ref>
-@.claude/skills/architecture_design/SKILL.md
+@skills/architecture-design/SKILL.md
 </skill-ref>
 
 ## 核心原则

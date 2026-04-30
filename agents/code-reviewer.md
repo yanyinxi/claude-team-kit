@@ -1,8 +1,8 @@
 ---
 name: code-reviewer
 description: 代码审查专家，分析代码质量、安全性和最佳实践。 Use proactively 在编写或修改代码后立即进行审查，识别潜在问题并提供改进建议。 主动扫描 Bug、安全漏洞、性能问题和代码质量问题。 触发词：代码审查、审查代码、PR 审查
-tools: Read, Bash, Grep, Glob, TodoWrite
-disallowedTools: WebFetch, WebSearch
+tools: Read, Grep, Glob, TodoWrite
+disallowedTools: WebFetch, WebSearch, Bash, Write, Edit
 model: sonnet
 permissionMode: default
 skills: karpathy-guidelines, code-quality
@@ -13,7 +13,7 @@ context: main
 
 <!-- SKILL: 编码行为准则 -->
 <skill-ref>
-@.claude/skills/karpathy-guidelines/SKILL.md
+@skills/karpathy-guidelines/SKILL.md
 </skill-ref>
 
 ## 工作流程
@@ -106,41 +106,6 @@ context: main
 - 改进类型注解
 - 性能优化
 
-## 输出规则
-
-> ⚠️ **重要**: 所有路径必须使用 `project_standards.md` 中定义的变量，不要硬编码
-
-- **审查报告保存到**: `{REVIEW_DIR}`
-- **文件命名**: `{REVIEW_DIR}[PR或功能名称]_review.md`
-- **使用Markdown格式**
-- **包含严重程度分类**
-
-### 示例
-- PR审查: `{REVIEW_DIR}pr_123_review.md`
-- 功能审查: `{REVIEW_DIR}user_authentication_review.md`
-
 ## 进度跟踪
 
-在每个阶段开始和结束时使用 `TodoWrite()` 跟踪进度:
-
-```python
-# 阶段 1: 快速扫描
-TodoWrite([{"content": "快速扫描代码", "id": "1", "status": "in_progress"}])
-# ... 执行快速扫描逻辑 ...
-TodoWrite([{"content": "快速扫描代码", "id": "1", "status": "completed"}])
-
-# 阶段 2: 深度检查
-TodoWrite([{"content": "深度检查代码", "id": "2", "status": "in_progress"}])
-# ... 执行深度检查逻辑 ...
-TodoWrite([{"content": "深度检查代码", "id": "2", "status": "completed"}])
-
-# 阶段 3: 安全扫描
-TodoWrite([{"content": "安全漏洞扫描", "id": "3", "status": "in_progress"}])
-# ... 执行安全扫描逻辑 ...
-TodoWrite([{"content": "安全漏洞扫描", "id": "3", "status": "completed"}])
-
-# 阶段 4: 生成报告
-TodoWrite([{"content": "生成审查报告", "id": "4", "status": "in_progress"}])
-Write("{REVIEW_DIR}[功能名]_review.md", review_report)
-TodoWrite([{"content": "生成审查报告", "id": "4", "status": "completed"}])
-```
+审查完成后将报告输出到 output/ 目录。

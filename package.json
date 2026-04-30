@@ -1,7 +1,7 @@
 {
-  "name": "claude-team-kit",
+  "name": "claude-harness-kit",
   "version": "0.1.0",
-  "description": "Claude Code 团队插件 — 多 Agent 协作、通用 Skills、持续进化",
+  "description": "Claude Harness Kit — Human steers, Agents execute. 多 Agent 协作、通用 Skills、持续进化",
   "main": "index.js",
   "files": [
     ".claude-plugin/",
@@ -13,7 +13,7 @@
     "README.md",
     "package.json"
   ],
-  "keywords": ["claude-code", "claude-code-plugin", "team", "multi-agent"],
+  "keywords": ["claude-code", "claude-code-plugin", "harness-engineering", "multi-agent", "self-evolution"],
   "license": "MIT",
   "engines": { "node": ">=18" }
 }

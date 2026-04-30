@@ -66,7 +66,7 @@ def append_session(root: Path, session: dict) -> int:
 
 def trigger_semantic_extraction(root: Path):
     """异步触发语义提取（仅当有用户纠正时）"""
-    daemon_dir = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", root)) / "evolve-daemon"
+    daemon_dir = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", root)) / "hooks" / "bin"
     extract_script = daemon_dir / "extract_semantics.py"
     if not extract_script.exists():
         return False

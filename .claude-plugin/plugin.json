@@ -1,9 +1,9 @@
 {
   "$schema": "https://claude.com/docs/claude-code/hooks",
-  "name": "claude-team-kit",
+  "name": "claude-harness-kit",
   "version": "0.2.0",
   "schemaVersion": "1.0.0",
-  "description": "Claude Code 团队级智能研发插件 — 多 Agent 协作、通用 Skills、上下文注入、持续进化",
+  "description": "Claude Harness Kit — Human steers, Agents execute. 多 Agent 协作、通用 Skills、持续进化",
   "author": { "name": "Claude Team Kit" },
   "license": "MIT"
 }

@@ -2,8 +2,8 @@
 name: gc
 description: 知识垃圾回收 Agent，定期扫描模式漂移、过期知识、技术债务，自动提交修复 PR
 model: sonnet
-tools: Read, Write, Edit, Bash, Grep, Glob
-schedule: weekly
+tools: Read, Grep, Glob, Bash
+disallowedTools: Write, Edit
 permissionMode: acceptEdits
 ---
 
@@ -56,7 +56,8 @@ permissionMode: acceptEdits
 - 不可修改 `rules/security.md`
 - 不可修改 `CLAUDE.md`
 - 不可修改 Agent 定义的 name/model 字段
-- 只能建议知识条目变更，不能直接修改代码
+- 只生成知识漂移报告，不直接修改 Agent/Skill/Rule 定义
+- 发现的问题通过 Mailbox 通知相关 Agent 或提交为提案
 - 自动 PR 必须通过 3 个检查：lint pass + 无新增测试失败 + diff <50 行
 
 ## 调度配置

@@ -13,7 +13,7 @@ context: main
 
 <!-- SKILL: 编码行为准则 -->
 <skill-ref>
-@.claude/skills/karpathy-guidelines/SKILL.md
+@skills/karpathy-guidelines/SKILL.md
 </skill-ref>
 
 ## 工作流程
@@ -104,46 +104,6 @@ Bug 报告到来
 - Bug 报告
 - 测试结果报告
 
-## 输出规则
-
-> ⚠️ **重要**: 所有路径必须使用 `project_standards.md` 中定义的变量，不要硬编码
-
-- **测试代码保存到**: `{TESTS_ROOT}`
-- **测试报告保存到**: `{TEST_REPORT_DIR}`
-- **Bug报告保存到**: `{BUG_REPORT_DIR}`
-- **测试报告使用Markdown格式**
-- **Bug报告按功能分类**
-
-### 示例
-- 用户测试: `{TESTS_ROOT}test_users.py`
-- 测试报告: `{TEST_REPORT_DIR}users_test_report.md`
-- Bug报告: `{BUG_REPORT_DIR}login_bugs.md`
-
 ## 进度跟踪
 
-在每个阶段开始和结束时使用 `TodoWrite()` 跟踪进度:
-
-```python
-# 阶段 1: 分析需求
-TodoWrite([{"content": "分析测试需求", "id": "1", "status": "in_progress"}])
-# ... 执行分析逻辑 ...
-TodoWrite([{"content": "分析测试需求", "id": "1", "status": "completed"}])
-
-# 阶段 2: 创建测试计划
-TodoWrite([{"content": "创建测试计划", "id": "2", "status": "in_progress"}])
-# ... 执行测试计划逻辑 ...
-TodoWrite([{"content": "创建测试计划", "id": "2", "status": "completed"}])
-
-# 阶段 3: 生成测试用例
-TodoWrite([{"content": "生成测试用例", "id": "3", "status": "in_progress"}])
-# ... 执行测试用例生成逻辑 ...
-TodoWrite([{"content": "生成测试用例", "id": "3", "status": "completed"}])
-
-# 阶段 4: 编写自动化测试
-TodoWrite([{"content": "编写自动化测试", "id": "4", "status": "in_progress"}])
-Write("{TESTS_ROOT}test_[模块名].py", test_code)
-Bash("pytest {TESTS_ROOT}")
-Write("{TEST_REPORT_DIR}[模块名]_report.md", test_report)
-Write("{BUG_REPORT_DIR}[模块名]_bugs.md", bug_report)
-TodoWrite([{"content": "生成Bug报告", "id": "6", "status": "completed"}])
-```
+测试完成后将报告输出到 output/ 目录。
