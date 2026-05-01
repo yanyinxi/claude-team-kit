@@ -5,7 +5,7 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-MAP_FILE="${PLUGIN_ROOT}/.worktrees/.worktree-map.json"
+MAP_FILE="${PLUGIN_ROOT}/../.claude/data/worktrees/.worktree-map.json"
 
 # Read hook data from stdin
 HOOK_DATA="$(cat)"

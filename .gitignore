@@ -1,3 +1,10 @@
+# Claude Harness Kit — 运行时数据（避免追踪瞬态文件）
+.claude/data/rate-limits/
+.claude/data/worktrees/
+.claude/data/error.jsonl
+.claude/data/error.jsonl.lock
+.claude/data/failures.jsonl
+
 # Python
 __pycache__/
 *.py[cod]

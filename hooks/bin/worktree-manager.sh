@@ -5,8 +5,8 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORKTREE_BASE="${PLUGIN_ROOT}/.worktrees"
-MAP_FILE="${PLUGIN_ROOT}/.worktrees/.worktree-map.json"
+WORKTREE_BASE="${PLUGIN_ROOT}/../.claude/data/worktrees"
+MAP_FILE="${PLUGIN_ROOT}/../.claude/data/worktrees/.worktree-map.json"
 
 mkdir -p "$WORKTREE_BASE"
 

@@ -6,8 +6,8 @@
 set -euo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SESSION_STATE_DIR="${PLUGIN_ROOT}/.worktrees/.sessions"
-MAP_FILE="${PLUGIN_ROOT}/.worktrees/.worktree-map.json"
+SESSION_STATE_DIR="${PLUGIN_ROOT}/../.claude/data/worktrees/sessions"
+MAP_FILE="${PLUGIN_ROOT}/../.claude/data/worktrees/.worktree-map.json"
 
 mkdir -p "$SESSION_STATE_DIR"
 
@@ -39,7 +39,7 @@ fi
 
 # Check if this session requests worktree isolation via .chk-worktree-isolation marker
 WORKTREE_REQUESTED=false
-if [[ -f "${PLUGIN_ROOT}/.worktrees/.isolation-request" ]]; then
+if [[ -f "${PLUGIN_ROOT}/../.claude/data/worktrees/.isolation-request" ]]; then
   WORKTREE_REQUESTED=true
 fi
 
@@ -50,7 +50,7 @@ fi
 # Create session state indicating worktree isolation is needed
 # The actual worktree will be created by worktree-manager.sh create
 WT_NAME="session-${SESSION_ID}"
-mkdir -p "${PLUGIN_ROOT}/.worktrees"
+mkdir -p "${PLUGIN_ROOT}/../.claude/data/worktrees"
 
 # Create worktree via worktree-manager.sh if not already created
 "${PLUGIN_ROOT}/hooks/bin/worktree-manager.sh" create "$WT_NAME" "isolation-session" >/dev/null 2>&1 || true

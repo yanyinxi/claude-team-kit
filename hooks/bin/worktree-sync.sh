@@ -37,7 +37,7 @@ else:
 
 # If path not found in hook data, look in worktree-map.json
 if [[ -z "$WORKTREE_PATH" ]]; then
-    MAP_FILE="${PLUGIN_ROOT}/.worktrees/.worktree-map.json"
+    MAP_FILE="${PLUGIN_ROOT}/../.claude/data/worktrees/.worktree-map.json"
     if [[ -f "$MAP_FILE" ]]; then
         # Get the most recently created worktree
         WORKTREE_PATH=$(python3 -c "
