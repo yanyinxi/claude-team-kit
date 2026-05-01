@@ -1,0 +1,34 @@
+{
+  "name": "claude-harness-kit",
+  "id": "claude-harness-kit",
+  "owner": {
+    "name": "yanyinxi",
+    "url": "https://github.com/yanyinxi"
+  },
+  "metadata": {
+    "description": "Claude Harness Kit — Human steers, Agents execute. 团队级 AI 驾驭工具包",
+    "version": "1.0.0",
+    "license": "MIT"
+  },
+  "plugins": [
+    {
+      "name": "claude-harness-kit",
+      "source": "./",
+      "description": "多 Agent 协作、通用 Skills、持续进化、团队级规范。22 Agents + 19 Skills + 6 Rules",
+      "version": "0.4.0",
+      "author": {
+        "name": "yanyinxi",
+        "url": "https://github.com/yanyinxi"
+      },
+      "homepage": "https://github.com/yanyinxi/claude-harness-kit",
+      "keywords": [
+        "harness-engineering",
+        "multi-agent",
+        "self-evolution",
+        "team-workflow",
+        "claude-code"
+      ],
+      "category": "workflow"
+    }
+  ]
+}
