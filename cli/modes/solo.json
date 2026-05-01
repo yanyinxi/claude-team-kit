@@ -1,0 +1,4 @@
+{
+  "description": "Solo 模式 — 直接对话，不用 Agent，零开销。纯对话场景，无强制 Hook",
+  "hooks": {}
+}

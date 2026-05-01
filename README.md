@@ -188,7 +188,7 @@ CHK 自动处理：
      统一 22 个 Agent 定义
      统一 19 个 Skill 规范
      统一 6 条 Rules 约束
-     kit sync 同步团队配置
+     统一插件分发
      → 输出质量稳定可预期
 ```
 
@@ -196,13 +196,18 @@ CHK 自动处理：
 
 ## 快速开始
 
-### 安装
+### 安装（两步搞定）
 
-#### Step 1: 克隆项目（只需做一次）
+**Step 1：克隆项目**
 
 ```bash
 git clone https://github.com/yanyinxi/claude-harness-kit.git
 cd claude-harness-kit
+```
+
+**Step 2：安装到 Claude Code**
+
+```bash
 claude plugins marketplace add --scope local $(pwd)
 claude plugins install claude-harness-kit
 claude plugins list
@@ -223,20 +228,21 @@ cd /path/to/your-project
 
 #### Step 2: 初始化（生成 CLAUDE.md）
 
-```bash
-/Users/yanyinxi/工作/code/github/claude-harness-kit/cli/kit.sh init
-# 或简写（如果 CHK 在 home 目录）：
-~/claude-harness-kit/cli/kit.sh init
+在 Claude Code 聊天框输入：
 
-# 输出示例：
-# kit init: your-project
-#   检测到: PHP / Composer
-#   框架: Laravel
-#   ✅ CLAUDE.md 已生成
-#   ✅ .claude/ 骨架已生成
+```text
+/chk-init
 ```
 
-> **注意**：这里要指定 CHK 的**完整路径**，因为 `kit.sh` 在你的项目目录里不存在。
+输出示例：
+
+```text
+chk init: your-project
+  检测到: PHP / Composer
+  框架: Laravel
+  ✅ CLAUDE.md 已生成
+  ✅ .claude/ 骨架已生成
+```
 
 #### Step 3: 启动 Claude Code
 
@@ -250,58 +256,54 @@ claude
 
 ### 常用命令
 
-```bash
-# 查看 CHK 帮助
-~/claude-harness-kit/cli/kit.sh --help
-
-# 初始化项目（在你的项目目录运行）
-~/claude-harness-kit/cli/kit.sh init
-
-# 标准开发流程
-~/claude-harness-kit/cli/kit.sh dev "实现用户登录功能"
-
-# 代码审查
-~/claude-harness-kit/cli/kit.sh review
-
-# 批量迁移
-~/claude-harness-kit/cli/kit.sh migrate "升级 Spring Boot 2.x → 3.x"
-
-# 查看 CHK 状态
-~/claude-harness-kit/cli/kit.sh status
-```
+| 你想做什么 | 输入命令 | 备注 |
+| ---------- | -------- | ---- |
+| 初始化新项目 | `/chk-init` | 自动分析技术栈，生成 CLAUDE.md，省去 30 分钟配置 |
+| 快速修复 Bug | `/chk-auto` | 全自动端到端，5 分钟搞定，零干预 |
+| 功能开发（默认） | `/chk-team` | 标准 5 阶段流程，研究→设计→实现→审查→交付 |
+| 批量代码改造 | `/chk-ultra` | 极限并行，3-5 个 Agent 同时工作，效率翻倍 |
+| 数据库迁移 | `/chk-pipeline` | 严格阶段顺序，每一步验证通过才进入下一步 |
+| 写支付/安全代码 | `/chk-ralph` | TDD 强制，不通过测试不停止，零风险 |
+| 架构决策 | `/chk-ccg` | 三方（Claude + Codex + Gemini）独立审查，最优方案 |
+| 简单问答 | `/chk-solo` | 直接对话，不用 Agent，零开销 |
+| 查看状态 | `/chk-status` | 查看当前模式、Hooks、Sessions、Instinct |
+| 清理过期知识 | `/chk-gc` | 扫描 .claude/knowledge/，清理漂移和过时内容 |
+| 查看帮助 | `/chk-help` | 显示所有命令和场景选择指南 |
 
 ---
 
-### 进阶：Claude Code 内直接对话
+### 进阶：用自然语言指挥
 
-在 Claude Code CLI 中（`claude` 命令），直接用自然语言指挥：
+在 Claude Code 中，不用记命令，直接说你想做什么：
 
 **场景 1: 启动多 Agent 并行分析**
 
 ```
-你: 分析一下如何实现这个功能：用户可以给素材打标签
+你: 我要对这 20 个文件统一添加日志
 
-CHK: (自动启动 Orchestrator)
+CHK: (自动启动 Ultrawork Mode)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚀 Phase 1: 并行研究开始
+🚀 Ultrawork Mode: 极限并行开始
 
-🔍 explore (Haiku) — 搜索相关代码
-   → 找到 UserController, TagService, TagMapper
-   → 现有标签表: user_tags, 关联表: user_tag_relation
+🔍 分析 20 个文件 → 拆成 4 组
+🔍 派发 4 个并行 Agent
+   → Agent 1: 处理文件 1-5
+   → Agent 2: 处理文件 6-10
+   → Agent 3: 处理文件 11-15
+   → Agent 4: 处理文件 16-20
+   → 汇总结果 → 报告
 
-🔍 codebase-analyzer (Haiku) — 分析模块结构
-   → 用户模块: user-api → user-service → user-dal
-   → 标签模块: tag-api → tag-service → tag-dal
-
-🔍 impact-analyzer (Haiku) — 评估影响
-   → 改动文件: 8 个
-   → 风险等级: Medium
-   → 建议: 先试点标签查询，验证后再加打标功能
-
-📄 输出: research/summary.md
+✅ 完成: 20 个文件全部添加日志
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+**场景 2: 激活特定 Agent**
+
+```
+你: 用 architect Agent 设计这个模块的架构
+
+CHK: (切换到 architect Agent, 使用 Opus 模型)
 
 **场景 2: 激活特定 Agent**
 
@@ -416,87 +418,41 @@ CHK: (激活 tdd Skill，执行 TDD 流程)
 
 ---
 
-#### 使用方式三：7 种执行模式选型
-
-| 场景 | 推荐模式 | 说明 |
-|------|---------|------|
-| 简单问答 | `Solo` | 直接对话，不用 Agent |
-| 快速修复 Bug | `Autopilot` | 全自动端到端，5 分钟搞定 |
-| 日常功能开发 | `Team` | 默认模式，5 阶段流程 |
-| 批量代码改造 | `Ultrawork` | 极限并行，3-5 个 Agent 同时工作 |
-| 数据库迁移 | `Pipeline` | 严格顺序，上一步输出喂下一步 |
-| 支付/安全代码 | `Ralph` | 不通过不停止，持久环 |
-| 关键架构决策 | `CCG` | Claude + Codex + Gemini 三方审查 |
-
-切换模式：
-
-```
-你: 切换到 ultrawork 模式
-
-你: 对这 20 个文件统一添加日志
-
-CHK: (启动 Ultrawork Mode)
-   → 分析 20 个文件
-   → 拆成 4 组，每组 5 个文件
-   → 派发 4 个并行 Agent
-   → 汇总结果 → 报告
-```
-
----
-
 ## 执行流程可视化
 
 ### 标准开发（Team 模式）
 
 ```
-用户: "实现素材标签过滤"
+输入 /chk-team，然后说：我要实现素材标签过滤
 
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 1: Research (并行分析) — ~2 min                       │
-│                                                             │
-│   🔍 explore ──→ 找到相关代码和调用链                        │
-│   🔍 analyzer ──→ 分析模块结构和依赖                        │
-│   🔍 impact ────→ 评估变更影响范围                        │
-│                                                             │
-│   → research/summary.md                                     │
-└─────────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 2: Plan (串行设计) — ~5 min                          │
-│                                                             │
-│   🏗️ architect (Opus) ──→ 架构设计                          │
-│   📋 tech-lead (Opus) ──→ 技术评审                          │
-│                                                             │
-│   → plan/architecture.md                                   │
-└─────────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 3: Implement (并行编码) — ~15 min                     │
-│                                                             │
-│   Task 1: backend ──→ Service 层逻辑         [并行]         │
-│   Task 2: frontend ─→ 标签选择器组件       [并行]         │
-│   Task 3: database ─→ 动态 SQL + 索引       [并行]         │
-│                                                             │
-│   → output/task_*.md                                       │
-└─────────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 4: Verify (并行审查) — ~10 min                        │
-│                                                             │
-│   🔍 code-reviewer ──→ 5 维度审查（正确性/性能/安全...）     │
-│   🔍 qa-tester ──────→ 测试覆盖验证                         │
-│   🔍 security ────────→ 安全审计（Opus）                    │
-│                                                             │
-│   → review/report.md                                        │
-└─────────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 5: Ship (交付) — ~3 min                               │
-│                                                             │
-│   ✅ 最终验证 → ✅ 审查通过 → ✅ git commit + push            │
-└─────────────────────────────────────────────────────────────┘
+Phase 1: Research (并行分析) — ~2 min
+  🔍 explore ──→ 找到相关代码和调用链
+  🔍 analyzer ──→ 分析模块结构和依赖
+  🔍 impact ────→ 评估变更影响范围
+  → research/summary.md
+          ↓
+Phase 2: Plan (串行设计) — ~5 min
+  🏗️ architect (Opus) ──→ 架构设计
+  📋 tech-lead (Opus) ──→ 技术评审
+  → plan/architecture.md
+          ↓
+Phase 3: Implement (并行编码) — ~15 min
+  Task 1: backend ──→ Service 层逻辑      [并行]
+  Task 2: frontend ──→ 标签选择器组件   [并行]
+  Task 3: database ──→ 动态 SQL + 索引   [并行]
+  → output/task_*.md
+          ↓
+Phase 4: Verify (并行审查) — ~10 min
+  🔍 code-reviewer ──→ 5 维度审查（正确性/性能/安全...）
+  🔍 qa-tester ────→ 测试覆盖验证
+  🔍 security ──────→ 安全审计（Opus）
+  → review/report.md
+          ↓
+Phase 5: Ship (交付) — ~3 min
+  ✅ 最终验证 → ✅ 审查通过 → ✅ git commit + push
 
 总耗时: ~35 min（传统串行方式: ~90 min）
+
 ```
 
 ---
@@ -569,13 +525,13 @@ CHK: (启动 Ultrawork Mode)
 ## 常见问题
 
 **Q: 需要学习很多新东西吗？**
-> 不用。安装后 `./cli/kit.sh init` 初始化项目，日常用 `./cli/kit.sh dev` 开发，和平时用 Claude Code 一样。
+> 不用。安装后输入 `/chk-init` 初始化项目，日常用 `/chk-team` 开发，和平时用 Claude Code 一样。
 
 **Q: 和 Claude Code 原生冲突吗？**
 > 不冲突。CHK 是插件，运行在 Claude Code 之上，补充了上下文、协作、进化能力。
 
 **Q: 团队所有人都要安装吗？**
-> 团队负责人安装一次，配置中央仓库，成员用 `kit sync` 同步即可。
+> 团队负责人安装一次，配置中央仓库，成员运行 `claude plugins install claude-harness-kit` 同步即可。
 
 **Q: 我的项目很小，需要 CHK 吗？**
 > 如果是个人小项目，Claude Code 原生就够用了。CHK 适合需要多人协作、有大量存量代码、或需要持续维护的项目。
@@ -598,10 +554,10 @@ CHK: (启动 Ultrawork Mode)
 
 | 问题 | 解决方案 |
 |------|---------|
-| `Plugin not found in marketplace` | 先运行 `claude plugins marketplace add --scope local /path/to/claude-harness-kit` |
-| `marketplace.json not found` | 确保 marketplace.json 文件存在于 `.claude-plugin/` 目录下 |
+| `Plugin not found in marketplace` | 先运行 `claude plugins marketplace add --scope local $(pwd)` |
+| `marketplace.json not found` | 确保 marketplace.json 在 `.claude-plugin/` 目录下 |
 | 插件已安装但不生效 | 重启 Claude Code，或运行 `claude plugins update claude-harness-kit` |
-| 找不到 kit.sh 命令 | 确保在项目目录下运行，且文件有执行权限 `chmod +x ./cli/kit.sh` |
+| 找不到 chk 命令 | 重新运行 `claude plugins install claude-harness-kit`，确保插件已启用 |
 
 ---
 

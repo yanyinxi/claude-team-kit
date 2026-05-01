@@ -1,0 +1,17 @@
+{
+  "description": "Team 模式 — 默认模式，5 阶段流程（功能开发）",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/bin/safety-check.sh", "timeout": 5 }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [{ "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/bin/quality-gate.sh", "timeout": 10 }]
+      }
+    ]
+  }
+}

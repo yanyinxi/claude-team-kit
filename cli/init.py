@@ -302,9 +302,17 @@ coverage/
 # ── 主入口 ────────────────────────────────────────────────
 
 def main():
-    target = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="kit init — 分析项目，生成 CLAUDE.md + .claude/ 配置")
+    parser.add_argument("target", nargs="?", default=None, help="目标目录（默认当前目录）")
+    parser.add_argument("--force", "-f", action="store_true", help="强制覆盖已存在的 CLAUDE.md")
+    parser.add_argument("--dry-run", "-n", action="store_true", help="仅预览，不写入文件")
+    args = parser.parse_args()
+
+    target = args.target if args.target else os.getcwd()
     root = Path(target).resolve()
-    print(f"kit init: {root.name}")
+    print(f"chk init: {root.name}")
 
     # 1. 技术栈
     tech = {"language": "unknown", "build_tool": "unknown", "build_cmd": "",
@@ -355,13 +363,21 @@ def main():
 
     # 4. 生成 CLAUDE.md
     claude_path = root / "CLAUDE.md"
-    if claude_path.exists():
-        print(f"  ⚠ CLAUDE.md 已存在，跳过生成")
+    if args.dry_run:
+        print(f"  🔍 [dry-run] 会生成 CLAUDE.md: {claude_path}")
+        content = generate_claude_md(root, tech, structure)
+        print(f"  🔍 [dry-run] 内容预览 ({content.count(chr(10))+1} 行)")
+        print(f"  🔍 [dry-run] 会创建骨架: .claude/rules/, .claude/knowledge/, .claude/data/")
+        return
+
+    if claude_path.exists() and not args.force:
+        print(f"  ⚠ CLAUDE.md 已存在，跳过生成（用 --force 覆盖）")
     else:
         content = generate_claude_md(root, tech, structure)
         claude_path.write_text(content, encoding="utf-8")
         line_count = content.count("\n")
-        print(f"  ✅ CLAUDE.md 已生成 ({line_count} 行)")
+        action = "覆盖" if claude_path.exists() else "生成"
+        print(f"  ✅ CLAUDE.md 已{action} ({line_count} 行)")
 
     # 5. 骨架
     create_skeleton(root)
@@ -371,9 +387,9 @@ def main():
     print(f"""
 下一步:
   1. 编辑 {claude_path} 补充 TODO 项（架构约定、已知陷阱）
-  2. 运行 kit mode default 确认执行模式
-  3. 运行 kit sync --from=<central-repo> 同步团队共享配置（如有）
-  4. git add CLAUDE.md .claude/ .claudeignore && git commit -m "chore: kit init"
+  2. 运行 chk team 确认执行模式
+  3. 运行 chk gc 扫描知识漂移
+  4. git add CLAUDE.md .claude/ .claudeignore && git commit -m "chore: chk init"
 """)
 
 

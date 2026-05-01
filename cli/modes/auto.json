@@ -1,0 +1,11 @@
+{
+  "description": "Autopilot 模式 — 全自动端到端，5 分钟搞定 Bug。最小化安全检查，快速反馈",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/bin/safety-check.sh", "timeout": 3 }]
+      }
+    ]
+  }
+}

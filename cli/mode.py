@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 """
-kit mode — 切换 Claude Code 执行模式。
+chk mode — 切换 Claude Code 执行模式。
 
-用法: kit mode [default|ralph|pipeline]
+用法: chk mode [solo|auto|team|ultra|pipeline|ralph|ccg|default]
 
-- default: 基础模式，safety-check + quality-gate + session 收集
-- ralph: TDD 强制模式，tdd-check 阻断 + 严格质量门禁
-- pipeline: 阶段顺序模式，TaskFile 协议 + 阶段验证
+模式说明:
+  solo     — 直接对话，不用 Agent，零开销
+  auto     — 全自动端到端，5 分钟搞定
+  team     — 默认模式，5 阶段流程
+  ultra    — 极限并行，3-5 个 Agent 同时工作
+  pipeline — 严格阶段顺序，TaskFile 协议
+  ralph    — TDD 强制，不通过不停止
+  ccg      — Claude + Codex + Gemini 三方审查
+  default  — 兼容旧名，等同 team
 
 切换时更新 .claude/settings.local.json 的 hooks 配置。
 """
@@ -20,9 +26,14 @@ from pathlib import Path
 MODES_DIR = Path(__file__).parent / "modes"
 
 MODE_DESCRIPTIONS = {
-    "default": "默认模式 — 平衡生产力与安全，基础 Hook 全部启用",
-    "ralph": "Ralph TDD 模式 — 实现代码必须先有测试，强制质量门禁",
-    "pipeline": "Pipeline 模式 — 严格阶段顺序，TaskFile 协议强制",
+    "solo":     "Solo 模式 — 直接对话，不用 Agent，零开销",
+    "auto":     "Autopilot 模式 — 全自动端到端，5 分钟搞定",
+    "team":     "Team 模式 — 默认模式，5 阶段流程（功能开发）",
+    "ultra":    "Ultrawork 模式 — 极限并行，3-5 个 Agent 同时工作",
+    "pipeline": "Pipeline 模式 — 严格阶段顺序，上一步输出喂下一步",
+    "ralph":    "Ralph TDD 模式 — 实现代码必须先有测试，不通过不停止",
+    "ccg":      "CCG 模式 — Claude + Codex + Gemini 三方独立审查",
+    "default": "默认模式 — 平衡生产力与安全（兼容旧名）",
 }
 
 
@@ -104,13 +115,20 @@ def main():
     subcommand = sys.argv[1]
 
     if subcommand in ("-h", "--help", "help"):
-        print("用法: kit mode [default|ralph|pipeline]")
-        print("      kit mode          # 查看当前模式")
+        print("用法: chk mode [solo|auto|team|ultra|pipeline|ralph|ccg]")
+        print("      chk mode          # 查看当前模式")
         for name, desc in MODE_DESCRIPTIONS.items():
             print(f"  {name:10s} — {desc}")
         return
 
+    # default 别名 team
+    if subcommand == "default":
+        subcommand = "team"
+
     if subcommand not in MODE_DESCRIPTIONS:
+        if subcommand == "":
+            show_current_mode(root)
+            return
         print(f"错误: 未知模式 '{subcommand}'")
         print(f"可用模式: {', '.join(MODE_DESCRIPTIONS.keys())}")
         sys.exit(1)

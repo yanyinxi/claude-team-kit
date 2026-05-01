@@ -77,7 +77,16 @@
       "Bash(claude --print \"Analyze OAuth login implementation\")",
       "Bash(~/claude-harness-kit/cli/kit.sh init *)",
       "mcp__filesystem__list_directory",
-      "mcp__filesystem__read_text_file"
+      "mcp__filesystem__read_text_file",
+      "Bash(chmod +x /Users/yanyinxi/工作/code/github/claude-harness-kit/cli/chk.sh)",
+      "Bash(timeout 30 claude --print \"使用 orchestrator 分析如何实现用户登录功能，使用这个 OAuth 扩展\")",
+      "Bash(chmod +x /Users/yanyinxi/工作/code/github/claude-harness-kit/cli/install.sh)",
+      "mcp__playwright__browser_navigate",
+      "Bash(bash /Users/yanyinxi/工作/code/github/claude-harness-kit/cli/chk.sh help)",
+      "Read(//private/tmp/**)",
+      "Bash(mkdir -p chk-test-project)",
+      "Bash(bash /Users/yanyinxi/工作/code/github/claude-harness-kit/cli/chk.sh init /tmp/chk-test-project --dry-run)",
+      "Bash(bash /Users/yanyinxi/工作/code/github/claude-harness-kit/cli/chk.sh mode)"
     ],
     "additionalDirectories": [
       "/tmp/research",

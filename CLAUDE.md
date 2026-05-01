@@ -60,9 +60,18 @@ claude-harness-kit/
 │   ├── proposer.py              ├── rollback.py
 │   └── intent_detector.py
 ├── cli/                         # 命令行工具
-│   ├── kit.sh                   ├── init.py
+│   ├── chk.sh                   # 统一入口（主推）
+│   ├── kit.sh                   # 兼容旧入口
+│   ├── install.sh               # 一键安装到终端
+│   ├── init.py                  ├── mode.py
 │   ├── sync.py                  ├── scan.py
-│   └── migrate.py
+│   ├── migrate.py               ├── status.py
+│   ├── gc.py                    └── modes/
+│       └── modes/               # 7 种模式 hook 配置
+│           ├── solo.json        ├── auto.json
+│           ├── team.json        ├── ultra.json
+│           ├── pipeline.json    ├── ralph.json
+│           └── ccg.json
 └── docs/                        # 设计文档
     ├── architecture-v2.md
     ├── research-claude-code-internals.md
@@ -93,6 +102,57 @@ claude-harness-kit/
 - TaskFile 协议：阶段间文件交接
 - Mailbox 机制：Agent 间直接通信
 - Checkpoint 系统：/compact 安全恢复
+
+## /chk-xxx 快速上手
+
+一句话：在 Claude Code 或终端输入 `/chk-xxx` 或 `chk xxx`，切换到对应的工作模式。
+
+### 安装（两步搞定）
+
+**Step 1：克隆项目**
+
+```bash
+git clone https://github.com/yanyinxi/claude-harness-kit.git
+cd claude-harness-kit
+```
+
+**Step 2：安装到 Claude Code**
+
+```bash
+claude plugins marketplace add --scope local $(pwd)
+claude plugins install claude-harness-kit
+```
+
+### 11 个命令，对号入座
+
+在 Claude Code 或 VS 插件聊天框中输入 `/chk-xxx`：
+
+| 你想做什么 | 斜杠命令 |
+|------------|----------|
+| 初始化新项目 | `/chk-init` |
+| 快速修复一个 Bug | `/chk-auto` |
+| 日常功能开发 | `/chk-team` |
+| 批量改造 20 个文件 | `/chk-ultra` |
+| 做数据库迁移 | `/chk-pipeline` |
+| 写支付/安全代码 | `/chk-ralph` |
+| 做一个架构决策 | `/chk-ccg` |
+| 简单问答一下 | `/chk-solo` |
+| 查看当前状态 | `/chk-status` |
+| 清理过期知识 | `/chk-gc` |
+| 查看所有命令 | `/chk-help` |
+
+### 场景对照（闭眼选）
+
+```text
+不知道问什么       → /chk-solo
+线上有个 Bug      → /chk-auto
+新功能要从零做    → /chk-team
+代码要全面重构     → /chk-ultra
+要迁数据库表      → /chk-pipeline
+写转账/加密代码   → /chk-ralph
+系统要怎么改      → /chk-ccg
+接手一个新项目   → /chk-init
+```
 
 ## 安全边界
 

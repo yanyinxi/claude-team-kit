@@ -5,5 +5,51 @@
   "schemaVersion": "1.0.0",
   "description": "Claude Harness Kit — Human steers, Agents execute. 多 Agent 协作、通用 Skills、持续进化",
   "author": { "name": "Claude Harness Kit" },
-  "license": "MIT"
+  "license": "MIT",
+  "slashCommands": [
+    {
+      "name": "chk-init",
+      "description": "分析当前项目，生成 CLAUDE.md + .claude/ 配置"
+    },
+    {
+      "name": "chk-solo",
+      "description": "Solo 模式 — 直接对话，不用 Agent，零开销"
+    },
+    {
+      "name": "chk-auto",
+      "description": "Autopilot 模式 — 全自动端到端，5 分钟搞定 Bug"
+    },
+    {
+      "name": "chk-team",
+      "description": "Team 模式 — 默认模式，5 阶段流程（功能开发）"
+    },
+    {
+      "name": "chk-ultra",
+      "description": "Ultrawork 模式 — 极限并行，3-5 个 Agent 同时工作"
+    },
+    {
+      "name": "chk-pipeline",
+      "description": "Pipeline 模式 — 严格阶段顺序，上一步输出喂下一步"
+    },
+    {
+      "name": "chk-ralph",
+      "description": "Ralph 模式 — TDD 强制，不通过不停止"
+    },
+    {
+      "name": "chk-ccg",
+      "description": "CCG 模式 — Claude + Codex + Gemini 三方独立审查"
+    },
+    {
+      "name": "chk-status",
+      "description": "查看 Harness Kit 当前状态（模式/Hooks/Sessions/Instinct）"
+    },
+    {
+      "name": "chk-gc",
+      "description": "知识垃圾回收 — 扫描 .claude/knowledge/ 生成漂移报告"
+    },
+    {
+      "name": "chk-help",
+      "description": "显示所有 chk 命令和场景选择指南"
+    }
+  ]
 }
