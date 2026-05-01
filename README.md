@@ -196,7 +196,7 @@ CHK 自动处理：
 
 ## 快速开始
 
-### 安装（两步搞定）
+### 安装（三步搞定）
 
 **Step 1：克隆项目**
 
@@ -214,43 +214,44 @@ claude plugins list
 # 应该看到: claude-harness-kit  enabled ✅
 ```
 
+**Step 3：复制斜杠命令到用户目录**
+
+```bash
+cp -r ~/.claude/plugins/cache/claude-harness-kit/claude-harness-kit/0.4.0/skills/* ~/.claude/skills/
+```
+
+> Step 3 的作用：将 11 个 `/chk-xxx` 斜杠命令（Skills）复制到用户目录，这样在 Claude Code 聊天框输入 `/chk-init` 等命令才会生效。
+
 ---
 
-### 使用（在你自己的项目里运行）
+### 使用
 
-假设你有一个存量项目：`/path/to/your-project`
+在 Claude Code 聊天框输入斜杠命令即可：
 
-#### Step 1: 进入你的项目目录
+| 你想做什么 | 输入命令 |
+| ---------- | -------- |
+| 初始化新项目 | `/chk-init` |
+| 快速修复 Bug | `/chk-auto` |
+| 功能开发（默认） | `/chk-team` |
+| 批量代码改造 | `/chk-ultra` |
+| 数据库迁移 | `/chk-pipeline` |
+| 写支付/安全代码 | `/chk-ralph` |
+| 架构决策 | `/chk-ccg` |
+| 简单问答 | `/chk-solo` |
+| 查看状态 | `/chk-status` |
+| 清理过期知识 | `/chk-gc` |
+| 查看帮助 | `/chk-help` |
 
-```bash
-cd /path/to/your-project
+### 场景对照（闭眼选）
+
 ```
-
-#### Step 2: 初始化（生成 CLAUDE.md）
-
-在 Claude Code 聊天框输入：
-
-```text
-/chk-init
+线上有个 Bug      → /chk-auto
+新功能要从零做    → /chk-team
+代码要全面重构     → /chk-ultra
+写转账/加密代码   → /chk-ralph
+系统要怎么改      → /chk-ccg
+接手一个新项目   → /chk-init
 ```
-
-输出示例：
-
-```text
-chk init: your-project
-  检测到: PHP / Composer
-  框架: Laravel
-  ✅ CLAUDE.md 已生成
-  ✅ .claude/ 骨架已生成
-```
-
-#### Step 3: 启动 Claude Code
-
-```bash
-claude
-```
-
-现在 Claude Code 会自动读取你项目里的 `CLAUDE.md`，AI 一进来就知道这是什么项目。
 
 ---
 
