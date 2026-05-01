@@ -15,8 +15,8 @@ scope: global
 
 ```
 # 并行分配独立任务
-Agent(subagent_type="backend-dev", prompt="实现 AssetController...")
-Agent(subagent_type="frontend-dev", prompt="实现 AssetList.vue...")
+Agent(subagent_type="claude-harness-kit:backend-dev", prompt="实现 AssetController...")
+Agent(subagent_type="claude-harness-kit:frontend-dev", prompt="实现 AssetList.vue...")
 ```
 
 ### Git 提交规范
