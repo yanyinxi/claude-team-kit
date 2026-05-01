@@ -740,7 +740,7 @@ Agent 需要重新理解上下文
 
 **新增文件**：
 
-1. **commands/checkpoint.md** — Checkpoint Slash Command
+1. ~~**commands/checkpoint.md** — Checkpoint Slash Command~~ (已移除)
 
 ```markdown
 ---
@@ -1776,7 +1776,7 @@ done
 
 #### 修复方案
 
-**新增 `commands/checkpoint.md`**：
+~~**新增 `commands/checkpoint.md`**~~ (已移除)
 
 ```markdown
 ---
@@ -1825,18 +1825,7 @@ You can also manually save with `/checkpoint save`.
 #### 测试验证
 
 ```bash
-# 测试 1：checkpoint.md 存在
-[[ -f commands/checkpoint.md ]] && echo "✅ checkpoint.md 存在"
-
-# 测试 2：验证 frontmatter 格式
-python3 -c "
-import re
-content = open('commands/checkpoint.md').read()
-# 检查 user-invocable: true
-has_inv = 'user-invocable: true' in content
-print(f'user-invocable: {has_inv}')
-"
-```
+# ~~commands/checkpoint.md 已移除~~
 
 ---
 
@@ -1853,7 +1842,7 @@ print(f'user-invocable: {has_inv}')
 
 #### 修复方案
 
-**新增 `commands/commit-push-pr.md`**：
+~~**新增 `commands/commit-push-pr.md`**~~ (已移除)
 
 ```markdown
 ---
@@ -1959,14 +1948,7 @@ PR: https://github.com/owner/repo/pull/123
 #### 测试验证
 
 ```bash
-# 测试 1：commit-push-pr.md 存在
-[[ -f commands/commit-push-pr.md ]] && echo "✅ commit-push-pr.md 存在"
-
-# 测试 2：验证 CI Gate 4 个条件
-for gate in "Build" "Test" "Lint" "Security"; do
-  grep -qi "$gate" commands/commit-push-pr.md && echo "✅ $gate gate 定义存在" || echo "❌ $gate gate 缺失"
-done
-```
+# ~~commands/commit-push-pr.md 已移除~~
 
 ---
 
@@ -2172,7 +2154,7 @@ echo "[P0-TASK-004] Output Secret Filter 检查..."
 echo ""
 echo "[P1-TASK-005] Checkpoint 检查..."
 [[ -x hooks/bin/checkpoint-auto-save.sh ]] && echo "✅ checkpoint-auto-save.sh 可执行" || echo "❌ checkpoint-auto-save.sh 缺失"
-[[ -f commands/checkpoint.md ]] && echo "✅ commands/checkpoint.md 存在" || echo "❌ commands/checkpoint.md 缺失"
+# ~~commands/checkpoint.md 已移除~~
 
 # P1-TASK-006: Instinct CLI
 echo ""
@@ -2192,7 +2174,7 @@ echo "[P1-TASK-008] session-wrap 检查..."
 # P1-TASK-009: /commit-push-pr
 echo ""
 echo "[P1-TASK-009] commit-push-pr 检查..."
-[[ -f commands/commit-push-pr.md ]] && echo "✅ commands/commit-push-pr.md 存在" || echo "❌ commands/commit-push-pr.md 缺失"
+# ~~commands/commit-push-pr.md 已移除~~
 
 echo ""
 echo "======================================"

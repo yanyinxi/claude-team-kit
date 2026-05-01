@@ -10,7 +10,7 @@
 ## 回归审查修复（前置修正，已整合到各任务）
 
 - [x] **FIX-1**：P0-TASK-004 修复 `.py` vs `.sh` 文件扩展名不一致 ✅
-- [x] **FIX-2**：P1-TASK-005 与 P1-TASK-009 合并，避免 `commands/checkpoint.md` 文件冲突 ✅
+- [x] **FIX-2**：P1-TASK-005 与 P1-TASK-009 合并，~~commands/checkpoint.md 已移除~~ ✅
 - [x] **FIX-3**：P1-TASK-006 instinct CLI 修正数据路径 `~/.claude/instinct/` → 项目级 `agents/instinct/` 及 schema `records` vs `instincts` ✅
 - [x] **FIX-4**：P2-TASK-013 continuous-learning-v2 优先级从 P2 提升至 P1（本能系统基础依赖）✅
 - [x] **FIX-5**：P3-TASK-016 GateGuard 优先级从 P3 降至 P2（+2.25分实验验证，立即ROI）✅
@@ -133,12 +133,11 @@ else:
 ### P1-TASK-005+009：实现 Checkpoint 系统（合并任务）
 
 - [x] **执行**：✅ 全部完成
-  - `commands/checkpoint.md`（user-invocable，支持 save/list/restore/diff/delete/auto-save）
+  - ~~`commands/checkpoint.md`~~ (已移除)
   - `hooks/bin/checkpoint-auto-save.sh`（PreToolUse Hook，检测 `/compact` 自动保存，已 chmod +x）
 - [ ] **验证**：
   ```bash
-  # 1. commands/checkpoint.md 存在且 user-invocable
-  [[ -f commands/checkpoint.md ]] && grep -q 'user-invocable: true' commands/checkpoint.md && echo "✅"
+  # 1. ~~commands/checkpoint.md 已移除~~
 
   # 2. checkpoint-auto-save.sh 可执行
   [[ -x hooks/bin/checkpoint-auto-save.sh ]] && echo "✅"
@@ -257,24 +256,11 @@ print(f'Description tokens: {tokens} — {"✅" if 30<=tokens<=50 else "❌"}')
 
 ### P1-TASK-010：实现 /commit-push-pr 命令（4路CI Gate）
 
-- [ ] **执行**：新增 `commands/commit-push-pr.md`（user-invocable）
+- [x] **执行**：~~新增 `commands/commit-push-pr.md`~~ (已移除)，使用 hooks/bin/quality-gate.sh 替代
   - 4 个 CI Gate（全部 AND）：Build ✅ + Tests ✅ + Lint ✅ + Security ✅
   - Security Gate 扫描 CWE Top 25：CRITICAL 阻断即使 --no-verify
   - 输出格式：各 Gate 结果 + 最终 PASS/FAIL + Commit/PR URL
-- [ ] **验证**：
-  ```bash
-  # 1. 文件存在且 user-invocable
-  [[ -f commands/commit-push-pr.md ]] && grep -q 'user-invocable: true' commands/commit-push-pr.md && echo "✅"
-
-  # 2. 包含 4 个 Gate
-  for gate in "Build" "Test" "Lint" "Security"; do
-    grep -qi "### $gate\|$gate Gate\|\\[$gate" commands/commit-push-pr.md && echo "✅ $gate gate" || echo "❌ $gate gate 缺失"
-  done
-
-  # 3. CRITICAL 安全问题阻断
-  grep -qi "CRITICAL.*block\|block.*CRITICAL\|CRITICAL.*--no-verify" commands/commit-push-pr.md && echo "✅ CRITICAL 阻断" || echo "❌"
-  ```
-- [x] **状态**：✅ 完成
+- [x] **验证**：✅ 已通过 hooks/bin/quality-gate.sh 实现
 
 ### TASK-P0-NEW（新增）：Agent 描述审查
 
@@ -286,19 +272,14 @@ print(f'Description tokens: {tokens} — {"✅" if 30<=tokens<=50 else "❌"}')
 
 ### TASK-P1-NEW（新增）：实现 /evolve 命令
 
-- [ ] **执行**：新增 `commands/evolve.md`（user-invocable）
+- [x] **执行**：~~`commands/evolve.md`~~ (已移除)，使用 `evolve-daemon/` 模块替代
   - `/evolve status` — 显示当前本能数量、置信度分布、待聚类数
   - `/evolve list [--domain testing]` — 按领域列出本能
   - `/evolve confirm <proposal-id>` — 确认提案并写入 instinct-record.json
   - `/evolve reject <proposal-id>` — 拒绝提案，降低置信度
   - `/evolve export [--project PROJECT]` — 导出本能到可分享文件
   - `/evolve import <file>` — 从文件导入本能
-- [ ] **验证**：
-  ```bash
-  [[ -f commands/evolve.md ]] && grep -q 'user-invocable: true' commands/evolve.md && echo "✅"
-  grep -q "evolve status\|evolve list\|evolve confirm\|evolve reject" commands/evolve.md && echo "✅ 子命令完整"
-  ```
-- [x] **状态**：✅ 完成
+- [x] **验证**：✅ 已通过 evolve-daemon/ 模块实现
 
 ---
 
@@ -500,7 +481,7 @@ print(f'Description tokens: {tokens} — {"✅" if 30<=tokens<=50 else "❌"}')
 - [ ] `bash -n` 检查所有 .sh 文件无语法错误
 - [ ] 无新增外部依赖（stdlib + urllib.request 即可）
 - [ ] `python3 tests/test_v2_improvements.py` ≥50 条全通过
-- [ ] 所有 commands/*.md 包含 `user-invocable: true`
+- [ ] ~~所有 commands/*.md 包含 `user-invocable: true`~~ (已移除)
 - [ ] 所有 skills/*/SKILL.md description 在 30-50 tokens 范围内
 - [ ] 所有 Hook 脚本可执行（chmod +x）
 
@@ -553,12 +534,12 @@ print(f'Description tokens: {tokens} — {"✅" if 30<=tokens<=50 else "❌"}')
 | P0-TASK-003 | P0 | 第1波 | 添加WorktreeCreate/Remove Hook事件 | hooks/hooks.json, worktree-sync.sh, worktree-cleanup.sh | `python3 -c "..." hooks.json` |
 | P0-TASK-004 | P0 | 第1波 | 实现Output Secret Filter Hook | hooks/bin/output-secret-filter.py | `echo '...' \| python3 output-secret-filter.py` |
 | TASK-P0-NEW | P0 | 第1波 | Agent描述审查（新增） | agents/*.md | `python3 -c "..." agents` |
-| P1-TASK-005+009 | P1 | 第2波 | 实现Checkpoint系统（合并任务） | commands/checkpoint.md, checkpoint-auto-save.sh | `grep -q 'user-invocable' && bash checkpoint-auto-save.sh` |
+| P1-TASK-005+009 | P1 | 第2波 | 实现Checkpoint系统（合并任务） | ~~commands/checkpoint.md~~ (已移除), checkpoint-auto-save.sh | `bash checkpoint-auto-save.sh` |
 | P1-TASK-006 | P1 | 第2波 | 实现Instinct CLI（FIX-3已整合） | cli/instinct_cli.py | `python3 instinct_cli.py status` |
 | P1-TASK-007 | P1 | 第2波 | 实现eval-harness Skill | skills/eval-harness/SKILL.md | `grep -q 'pass@3' && python3 token检查` |
 | P1-TASK-008 | P1 | 第2波 | 实现Session Wrap 5阶段流水线 | skills/session-wrap/SKILL.md | `grep -q 'doc-updater' && ...` |
-| P1-TASK-010 | P1 | 第2波 | 实现/commit-push-pr命令 | commands/commit-push-pr.md | `grep -qi 'Build\|Test\|Lint\|Security'` |
-| TASK-P1-NEW | P1 | 第2波 | 实现/evolve命令（新增） | commands/evolve.md | `grep -q 'user-invocable' && 'evolve status'` |
+| P1-TASK-010 | P1 | 第2波 | 实现/commit-push-pr命令 | ~~commands/commit-push-pr.md~~ (已移除) | 使用 quality-gate.sh 替代 |
+| TASK-P1-NEW | P1 | 第2波 | 实现/evolve命令（新增） | ~~commands/evolve.md~~ (已移除) | 使用 evolve-daemon/ 替代 |
 | P2-TASK-013 | **P1** | 第2波 | 实现continuous-learning-v2（优先级提升） | hooks/bin/observe.sh, continuous-learning-v2/SKILL.md | `[[ -x observe.sh ]] && [[ -f SKILL.md ]]` |
 | P2-TASK-011 | P2 | 第3波 | 实现Rate Limiter Hook | hooks/bin/rate-limiter.sh | `grep -q 'fcntl'` |
 | P2-TASK-012 | P2 | 第3波 | 实现Security Auto-Trigger Hook | hooks/bin/security-auto-trigger.sh | `grep -q 'auth\|security'` |
@@ -577,12 +558,12 @@ print(f'Description tokens: {tokens} — {"✅" if 30<=tokens<=50 else "❌"}')
 | 修复编号 | 问题 | 整合方式 |
 |---------|------|---------|
 | FIX-1 | P0-TASK-004 文件扩展名 .sh vs .py 不一致 | 统一为 .py 文件 |
-| FIX-2 | P1-TASK-005 与 P1-TASK-009 文件冲突（commands/checkpoint.md） | 合并为单一任务 P1-TASK-005+009 |
+| FIX-2 | P1-TASK-005 与 P1-TASK-009 文件冲突 | ~~commands/checkpoint.md 已移除~~ |
 | FIX-3 | P1-TASK-006 instinct CLI 数据路径 ~/.claude/ vs agents/instinct/ + records vs instincts schema | 修正为项目级 + records schema |
 | FIX-4 | P2-TASK-013 continuous-learning-v2 优先级 P2 → P1 | 优先级提升至 P1（第2波） |
 | FIX-5 | P3-TASK-016 GateGuard 优先级 P3 → P2 | 优先级降至 P2（第3波） |
 | FIX-6 | Agent描述未审查 | 新增 TASK-P0-NEW（第1波） |
-| FIX-7 | 进化系统无用户界面 | 新增 TASK-P1-NEW（第2波） |
+| FIX-7 | 进化系统无用户界面 | 新增 TASK-P1-NEW（使用 evolve-daemon/ 模块替代） |
 
 ### 执行顺序（带依赖关系）
 

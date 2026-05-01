@@ -55,7 +55,7 @@ my-plugin/
 ├── skills/                       # SKILL.md 在根级别
 ├── agents/                       # Agent .md 在根级别
 ├── hooks/hooks.json              # Hook 配置在根级别
-├── commands/                     # Slash 命令
+# ~~commands/~~                   # Slash 命令 (已移除)
 ├── rules/                        # Rule .md 文件
 └── README.md
 ```
