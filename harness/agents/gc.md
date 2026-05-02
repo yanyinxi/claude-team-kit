@@ -18,8 +18,8 @@ maxTurns: 30
 
 ### Step 1: 扫描知识库
 ```
-对比 knowledge/ 条目 vs 代码实际模式:
-  - 读取所有 knowledge/ 条目
+对比 harness/knowledge/ 条目 vs 代码实际模式:
+  - 读取所有 harness/knowledge/ 条目
   - 对每个条目在代码中寻找匹配模式
   - 标记: 匹配 / 部分匹配 / 无匹配 / 存在变体
 ```
