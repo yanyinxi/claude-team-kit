@@ -22,3 +22,7 @@ coverage/
 *.gif
 *.ico
 *.woff*
+.pytest_cache/
+.DS_Store
+*.tmp
+*.temp

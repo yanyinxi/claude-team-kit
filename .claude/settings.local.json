@@ -13,7 +13,10 @@
       "Bash(curl *)",
       "mcp__*",
       "Bash(pytest * *)",
-      "Bash(echo *)"
+      "Bash(echo *)",
+      "Bash(bash *)",
+      "Bash(grep -o * *)",
+      "Bash(export  *)"
     ],
     "additionalDirectories": [
       "*"

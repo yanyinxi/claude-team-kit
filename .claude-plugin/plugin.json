@@ -50,6 +50,10 @@
     {
       "name": "chk-help",
       "description": "显示所有 chk 命令和场景选择指南"
+    },
+    {
+      "name": "auto-execute",
+      "description": "一键全执行 — 用户授权后自动执行所有待办任务，无需确认"
     }
   ]
 }

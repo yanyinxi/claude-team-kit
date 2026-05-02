@@ -3,7 +3,7 @@
 import os
 from pathlib import Path
 
-SKILLS_DIR = Path("/Users/yanyinxi/工作/code/github/claude-harness-kit/skills")
+SKILLS_DIR = Path(__file__).parent.parent / "skills"
 
 INDEX_TEMPLATE = '''# {title}
 
