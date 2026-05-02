@@ -39,14 +39,23 @@ def aggregate_and_analyze(sessions: list[dict], config: dict, root: Path) -> dic
             })
 
     # 统计工具失败
+    # 从 rich_context.failure_stats.failure_types 读取
+    for s in sessions:
+        rich_ctx = s.get("rich_context", {})
+        failure_stats = rich_ctx.get("failure_stats", {})
+        failures = failure_stats.get("failure_types", {})
+        for error_type, count in failures.items():
+            if count >= 1:  # 有任何失败都记录
+                correction_targets[f"tool:{error_type}"] += count
+
     tool_failures: Counter = Counter()
     for s in sessions:
-        failures = s.get("tool_failures", 0)
-        if isinstance(failures, list):
-            for f_item in failures:
-                tool_failures[f_item.get("tool", "unknown")] += 1
-        elif isinstance(failures, int):
-            pass  # 只有计数，无工具名
+        # 从 rich_context.failure_stats.total 或直接字段获取
+        rich_ctx = s.get("rich_context", {})
+        failure_stats = rich_ctx.get("failure_stats", {})
+        failures = failure_stats.get("failure_tools", {})
+        for tool, count in failures.items():
+            tool_failures[tool] += count
 
     # 统计技能使用
     skill_usage: Counter = Counter()
@@ -79,7 +88,7 @@ def aggregate_and_analyze(sessions: list[dict], config: dict, root: Path) -> dic
         "skill_usage": dict(skill_usage),
         "skill_override_rate": round(override_rate, 2),
         "primary_target": primary_target or "general",
-        "should_propose": len(correction_targets) > 0 and _meets_safety_checks(config, correction_targets),
+        "should_propose": (len(correction_targets) > 0 or len(tool_failures) > 0) and _meets_safety_checks(config, correction_targets),
     }
 
 

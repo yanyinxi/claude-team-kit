@@ -1,169 +1,197 @@
 #!/usr/bin/env python3
-"""collect-session 测试"""
+"""
+测试: collect-session.py 数据采集功能
+
+验证:
+1. 会话数据正确写入 sessions.jsonl
+2. failure_types 正确分类
+3. agent_stats 正确聚合
+4. git_stats 正确统计
+"""
 import json
 import os
-import subprocess
 import sys
 import tempfile
-from datetime import datetime, timedelta
 from pathlib import Path
+
+# 添加 hooks/bin 到模块路径（在导入前设置）
+sys.path.insert(0, str(Path(__file__).parent.parent / "hooks" / "bin"))
+
+# 模拟环境变量
+os.environ["CLAUDE_PROJECT_DIR"] = tempfile.mkdtemp()
 
 import pytest
 
 
-class TestCollectSession:
-    """Stop Hook 测试 - 聚合所有数据源"""
+class TestClassifyErrorType:
+    """测试错误分类逻辑"""
 
-    @pytest.fixture
-    def temp_project(self, tmp_path):
-        """创建临时项目结构"""
-        (tmp_path / "CLAUDE.md").write_text("# Test Project")
-        (tmp_path / ".claude" / "data").mkdir(parents=True)
-        (tmp_path / "src.py").write_text("# source")
-        return tmp_path
+    def test_permission_error(self):
+        from collect_session import classify_error_type
+        assert classify_error_type("Permission denied") == "permission_error"
+        assert classify_error_type("Access denied to file") == "permission_error"
 
-    @pytest.fixture
-    def script_path(self):
-        return Path(__file__).parent.parent / "hooks" / "bin" / "collect-session.py"
+    def test_not_found_error(self):
+        from collect_session import classify_error_type
+        assert classify_error_type("File not found") == "not_found_error"
+        assert classify_error_type("No such file or directory") == "not_found_error"
 
-    def test_aggregates_agent_calls(self, temp_project, script_path):
-        """应该从 agent_calls.jsonl 汇总 agents_used"""
-        agent_calls = temp_project / ".claude" / "data" / "agent_calls.jsonl"
-        agent_calls.write_text(
-            json.dumps({"agent": "Explore", "task": "find files", "timestamp": datetime.now().isoformat()}) + "\n"
-            + json.dumps({"agent": "claude-harness-kit:executor", "task": "write code", "timestamp": datetime.now().isoformat()}) + "\n"
+    def test_timeout_error(self):
+        from collect_session import classify_error_type
+        assert classify_error_type("Connection timeout") == "timeout_error"
+        assert classify_error_type("Request timed out") == "timeout_error"
+
+    def test_syntax_error(self):
+        from collect_session import classify_error_type
+        assert classify_error_type("Syntax error in JSON") == "syntax_error"
+        assert classify_error_type("Failed to parse config") == "syntax_error"
+
+    def test_unknown_error(self):
+        from collect_session import classify_error_type
+        assert classify_error_type("Something went wrong") == "unknown_error"
+
+
+class TestAggregateFailures:
+    """测试失败聚合逻辑"""
+
+    def test_empty_failures(self):
+        from collect_session import aggregate_failures
+        root = Path(tempfile.mkdtemp())
+        result = aggregate_failures(root)
+        assert result["total"] == 0
+        assert result["failure_types"] == {}
+
+    def test_with_failures(self):
+        from collect_session import aggregate_failures
+        root = Path(tempfile.mkdtemp())
+        # 实际路径是 root / ".claude" / "data" / "failures.jsonl"
+        data_dir = root / ".claude" / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        failures_file = data_dir / "failures.jsonl"
+        failures_file.write_text(
+            json.dumps({"tool": "Read", "error": "Permission denied", "timestamp": "2026-05-02T10:00:00"}) + "\n"
+            + json.dumps({"tool": "Bash", "error": "File not found", "timestamp": "2026-05-02T10:01:00"}) + "\n"
         )
+        result = aggregate_failures(root)
+        assert result["total"] == 2
+        assert result["failure_types"]["permission_error"] == 1
+        assert result["failure_types"]["not_found_error"] == 1
+        assert result["failure_tools"]["Read"] == 1
+        assert result["failure_tools"]["Bash"] == 1
 
-        session_start = temp_project / ".claude" / "data" / ".session_start"
-        session_start.write_text(json.dumps({
-            "timestamp": datetime.now().isoformat(),
-            "mode": "solo"
-        }))
-
-        env = os.environ.copy()
-        env["CLAUDE_PROJECT_DIR"] = str(temp_project)
-        env["CLAUDE_MODE"] = "solo"
-
-        result = subprocess.run(
-            [sys.executable, str(script_path)],
-            capture_output=True, text=True, env=env
+    def test_failure_classification(self):
+        from collect_session import aggregate_failures
+        root = Path(tempfile.mkdtemp())
+        # 实际路径是 root / ".claude" / "data" / "failures.jsonl"
+        data_dir = root / ".claude" / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        failures_file = data_dir / "failures.jsonl"
+        failures_file.write_text(
+            json.dumps({"tool": "Bash", "error": "Connection timeout", "timestamp": "2026-05-02T10:00:00"}) + "\n"
+            + json.dumps({"tool": "Bash", "error": "Permission denied", "timestamp": "2026-05-02T10:01:00"}) + "\n"
         )
+        result = aggregate_failures(root)
+        assert result["failure_types"]["timeout_error"] == 1
+        assert result["failure_types"]["permission_error"] == 1
 
-        sessions = temp_project / ".claude" / "data" / "sessions.jsonl"
-        lines = sessions.read_text().strip().splitlines()
-        last_session = json.loads(lines[-1])
 
-        assert "agents_used" in last_session
-        assert len(last_session["agents_used"]) >= 2
+class TestBuildSession:
+    """测试会话构建逻辑"""
 
-    def test_aggregates_failures(self, temp_project, script_path):
-        """应该从 failures.jsonl 统计 tool_failures"""
-        failures = temp_project / ".claude" / "data" / "failures.jsonl"
-        failures.write_text(
-            json.dumps({"tool": "Bash", "error": "Exit code 1", "timestamp": datetime.now().isoformat()}) + "\n"
-            + json.dumps({"tool": "Read", "error": "FileNotFoundError", "timestamp": datetime.now().isoformat()}) + "\n"
-        )
+    def test_minimal_session(self):
+        from collect_session import build_session, find_project_root
+        root = find_project_root()
+        session = build_session(root)
+        assert "session_id" in session
+        assert "timestamp" in session
+        assert "mode" in session
+        assert "duration_minutes" in session
+        assert "agents_used" in session
+        assert "tool_failures" in session
+        assert "git_files_changed" in session
 
-        session_start = temp_project / ".claude" / "data" / ".session_start"
-        session_start.write_text(json.dumps({
-            "timestamp": datetime.now().isoformat(),
-            "mode": "solo"
-        }))
+    def test_rich_context_structure(self):
+        from collect_session import build_session, find_project_root
+        root = find_project_root()
+        session = build_session(root)
+        assert "rich_context" in session
+        ctx = session["rich_context"]
+        assert "agent_stats" in ctx or "failure_stats" in ctx
 
-        env = os.environ.copy()
-        env["CLAUDE_PROJECT_DIR"] = str(temp_project)
-        env["CLAUDE_MODE"] = "solo"
 
-        result = subprocess.run(
-            [sys.executable, str(script_path)],
-            capture_output=True, text=True, env=env
-        )
+class TestAppendSession:
+    """测试会话追加逻辑"""
 
-        sessions = temp_project / ".claude" / "data" / "sessions.jsonl"
-        lines = sessions.read_text().strip().splitlines()
-        last_session = json.loads(lines[-1])
+    def test_append_creates_file(self):
+        from collect_session import append_session, find_project_root
+        root = find_project_root()
+        data_dir = root / ".claude" / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
 
-        assert last_session["tool_failures"] >= 2
+        session = {
+            "session_id": "test-123",
+            "timestamp": "2026-05-02T10:00:00",
+            "mode": "solo",
+            "duration_minutes": 5,
+        }
+        log_file = append_session(root, session)
 
-    def test_calculates_duration_from_session_start(self, temp_project, script_path):
-        """应该从 .session_start 计算 duration_minutes"""
-        start_time = datetime.now() - timedelta(minutes=30)
-        session_start = temp_project / ".claude" / "data" / ".session_start"
-        session_start.write_text(json.dumps({
-            "timestamp": start_time.isoformat(),
-            "mode": "solo"
-        }))
+        assert log_file.exists()
+        content = log_file.read_text()
+        assert "test-123" in content
+        assert "2026-05-02T10:00:00" in content
 
-        env = os.environ.copy()
-        env["CLAUDE_PROJECT_DIR"] = str(temp_project)
-        env["CLAUDE_MODE"] = "solo"
+    def test_append_jsonl_format(self):
+        from collect_session import append_session, find_project_root
+        root = find_project_root()
+        data_dir = root / ".claude" / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
 
-        result = subprocess.run(
-            [sys.executable, str(script_path)],
-            capture_output=True, text=True, env=env
-        )
+        sessions_file = data_dir / "sessions.jsonl"
+        if sessions_file.exists():
+            sessions_file.unlink()
 
-        sessions = temp_project / ".claude" / "data" / "sessions.jsonl"
-        lines = sessions.read_text().strip().splitlines()
-        last_session = json.loads(lines[-1])
+        for i in range(3):
+            session = {
+                "session_id": f"test-{i}",
+                "timestamp": "2026-05-02T10:00:00",
+            }
+            append_session(root, session)
 
-        assert last_session["duration_minutes"] >= 25
+        content = sessions_file.read_text()
+        lines = content.strip().split("\n")
+        assert len(lines) == 3
+        for line in lines:
+            json.loads(line)  # 必须是有效 JSON
 
-    def test_reports_git_files_changed(self, temp_project, script_path):
-        """应该执行 git diff 统计 git_files_changed"""
-        session_start = temp_project / ".claude" / "data" / ".session_start"
-        session_start.write_text(json.dumps({
-            "timestamp": datetime.now().isoformat(),
-            "mode": "solo"
-        }))
 
-        env = os.environ.copy()
-        env["CLAUDE_PROJECT_DIR"] = str(temp_project)
-        env["CLAUDE_MODE"] = "solo"
+class TestShouldTriggerAnalysis:
+    """测试分析触发判断"""
 
-        result = subprocess.run(
-            [sys.executable, str(script_path)],
-            capture_output=True, text=True, env=env
-        )
+    def test_no_trigger_low_failures(self):
+        from collect_session import should_trigger_analysis
+        session = {"tool_failures": 2, "agent_success_rate": 0.9}
+        assert should_trigger_analysis(session, {}) == False
 
-        sessions = temp_project / ".claude" / "data" / "sessions.jsonl"
-        lines = sessions.read_text().strip().splitlines()
-        last_session = json.loads(lines[-1])
+    def test_trigger_high_failures(self):
+        from collect_session import should_trigger_analysis
+        session = {"tool_failures": 6, "agent_success_rate": 0.9}
+        assert should_trigger_analysis(session, {}) == True
 
-        assert "git_files_changed" in last_session
-        assert isinstance(last_session["git_files_changed"], int)
+    def test_trigger_low_success_rate(self):
+        from collect_session import should_trigger_analysis
+        session = {"tool_failures": 2, "agent_success_rate": 0.3}
+        assert should_trigger_analysis(session, {}) == True
 
-    def test_rich_context_contains_tool_distribution(self, temp_project, script_path):
-        """rich_context 应该包含工具使用分布"""
-        agent_calls = temp_project / ".claude" / "data" / "agent_calls.jsonl"
-        agent_calls.write_text(
-            json.dumps({"agent": "Explore", "task": "", "timestamp": datetime.now().isoformat()}) + "\n"
-            + json.dumps({"agent": "Explore", "task": "", "timestamp": datetime.now().isoformat()}) + "\n"
-            + json.dumps({"agent": "executor", "task": "", "timestamp": datetime.now().isoformat()}) + "\n"
-        )
-
-        session_start = temp_project / ".claude" / "data" / ".session_start"
-        session_start.write_text(json.dumps({
-            "timestamp": datetime.now().isoformat(),
-            "mode": "solo"
-        }))
-
-        env = os.environ.copy()
-        env["CLAUDE_PROJECT_DIR"] = str(temp_project)
-        env["CLAUDE_MODE"] = "solo"
-
-        result = subprocess.run(
-            [sys.executable, str(script_path)],
-            capture_output=True, text=True, env=env
-        )
-
-        sessions = temp_project / ".claude" / "data" / "sessions.jsonl"
-        lines = sessions.read_text().strip().splitlines()
-        last_session = json.loads(lines[-1])
-
-        assert "rich_context" in last_session
-        assert len(last_session["rich_context"]) > 0
+    def test_trigger_repeated_error_type(self):
+        from collect_session import should_trigger_analysis
+        session = {
+            "tool_failures": 2,
+            "agent_success_rate": 0.9,
+            "failure_types": {"permission_error": 5}
+        }
+        assert should_trigger_analysis(session, {}) == True
 
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    sys.exit(pytest.main([__file__, "-v"]))

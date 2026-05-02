@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 """
-Stop Hook: 聚合本轮会话摘要，触发语义提取。
+Stop Hook: 收集会话数据，触发进化分析。
 
-阶段 1: 元数据收集
-  读取本轮所有临时 jsonl → 构建会话摘要行 → 写入 sessions.jsonl
+Phase 1 核心功能:
+  1. 收集会话元数据（duration, agents, failures, git changes）
+  2. 从 failures.jsonl 提取失败模式（不需要用户纠正）
+  3. 触发异步分析（不阻塞主流程）
 
-阶段 2: 触发 extract_semantics.py（异步，不阻塞）
-  如果检测到用户纠正，异步触发语义提取
-
-设计原则:
-  - Hook 只采集元数据，不做 AI 调用
-  - 非阻塞：写入一行 JSONL 后立即返回
-  - 语义提取异步触发，失败不影响主流程
+为什么不用 corrections：
+  - 用户纠正信号难以可靠获取
+  - failures.jsonl 是客观的、可测量的信号
+  - 高频失败 → 提示/文档需要改进
+  - 这是真正全自动进化的基础
 """
 import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, date
 from pathlib import Path
 from collections import Counter
 
@@ -38,12 +38,10 @@ def get_session_id_fallback(root: Path) -> str:
             if result.returncode == 0:
                 commit = result.stdout.strip()
                 if commit:
-                    from datetime import date
                     today = date.today().isoformat()
                     return f"git-{commit}-{today}"
         except Exception:
             pass
-
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     return f"{root.name}-{ts}"
 
@@ -71,142 +69,215 @@ def calculate_duration(session_start: dict) -> int:
         return 0
 
 
-def aggregate_agent_calls(root: Path) -> list:
-    """从 agent_calls.jsonl 汇总 agents_used"""
+def aggregate_agent_calls(root: Path) -> dict:
+    """从 agent_calls.jsonl 汇总 agent 使用情况"""
     agent_calls_file = root / ".claude" / "data" / "agent_calls.jsonl"
+    result = {
+        "agents": [],
+        "agent_count": 0,
+        "agent_distribution": {},
+        "success_count": 0,
+        "failure_count": 0,
+    }
     if not agent_calls_file.exists():
-        return []
+        return result
 
-    agents = set()
     try:
         content = agent_calls_file.read_text().strip()
-        if content:
-            for line in content.splitlines():
-                try:
-                    call = json.loads(line)
-                    agent = call.get("agent", "")
-                    if agent:
-                        agents.add(agent)
-                except json.JSONDecodeError:
-                    continue
+        if not content:
+            return result
+
+        agent_list = []
+        success_count = 0
+        failure_count = 0
+        for line in content.splitlines():
+            try:
+                call = json.loads(line)
+                agent = call.get("agent", "")
+                if agent:
+                    agent_list.append(agent)
+                if call.get("success") is True:
+                    success_count += 1
+                elif call.get("success") is False:
+                    failure_count += 1
+            except json.JSONDecodeError:
+                continue
+
+        if agent_list:
+            counter = Counter(agent_list)
+            result["agents"] = list(counter.keys())
+            result["agent_count"] = len(agent_list)
+            result["agent_distribution"] = dict(counter)
+            result["success_count"] = success_count
+            result["failure_count"] = failure_count
+
     except OSError:
         pass
 
-    return sorted(list(agents))
+    return result
 
 
-def aggregate_failures(root: Path) -> int:
-    """从 failures.jsonl 统计 tool_failures"""
+def aggregate_failures(root: Path) -> dict:
+    """从 failures.jsonl 提取失败模式"""
     failures_file = root / ".claude" / "data" / "failures.jsonl"
+    result = {
+        "total": 0,
+        "failure_types": {},
+        "failure_tools": {},
+        "recent_failures": [],
+    }
     if not failures_file.exists():
-        return 0
+        return result
 
     try:
         content = failures_file.read_text().strip()
-        if content:
-            return len(content.splitlines())
+        if not content:
+            return result
+
+        lines = content.splitlines()
+        result["total"] = len(lines)
+
+        type_counter = Counter()
+        tool_counter = Counter()
+        recent = []
+
+        for line in lines[-20:]:  # 只保留最近 20 条
+            try:
+                f = json.loads(line)
+                error_type = f.get("error_type", classify_error_type(f.get("error", "")))
+                tool = f.get("tool", "unknown")
+                type_counter[error_type] += 1
+                tool_counter[tool] += 1
+                recent.append({
+                    "tool": tool,
+                    "error_type": error_type,
+                    "error": f.get("error", "")[:200],
+                    "timestamp": f.get("timestamp", ""),
+                })
+            except json.JSONDecodeError:
+                continue
+
+        result["failure_types"] = dict(type_counter)
+        result["failure_tools"] = dict(tool_counter)
+        result["recent_failures"] = recent
+
     except OSError:
         pass
 
-    return 0
+    return result
 
 
-def get_git_files_changed(root: Path) -> int:
-    """执行 git diff --stat 统计 git_files_changed"""
+def classify_error_type(error: str) -> str:
+    """分类错误类型"""
+    error_lower = error.lower()
+    if "permission" in error_lower or "denied" in error_lower:
+        return "permission_error"
+    if "not found" in error_lower or "no such" in error_lower:
+        return "not_found_error"
+    if "timeout" in error_lower or "timed out" in error_lower:
+        return "timeout_error"
+    if "syntax" in error_lower or "parse" in error_lower:
+        return "syntax_error"
+    if "connection" in error_lower or "network" in error_lower:
+        return "network_error"
+    if "read" in error_lower or "write" in error_lower or "io" in error_lower:
+        return "io_error"
+    return "unknown_error"
+
+
+def get_git_changes(root: Path) -> dict:
+    """执行 git diff 统计变更"""
+    result = {
+        "files_changed": 0,
+        "lines_added": 0,
+        "lines_deleted": 0,
+    }
     try:
-        result = subprocess.run(
-            ["git", "diff", "--name-only", "--cached"],
+        # 统计未缓存的变更
+        r = subprocess.run(
+            ["git", "diff", "--stat"],
             cwd=root, capture_output=True, text=True, timeout=10
         )
-        if result.returncode == 0:
-            files = result.stdout.strip()
-            if files:
-                return len(files.splitlines())
+        if r.returncode == 0:
+            stat = r.stdout.strip()
+            if stat:
+                parts = stat.split(",")
+                for p in parts:
+                    p = p.strip()
+                    if "file" in p and "changed" in p:
+                        result["files_changed"] = int(p.split()[0])
+                    if "insertion" in p:
+                        result["lines_added"] = int(p.split()[0])
+                    if "deletion" in p:
+                        result["lines_deleted"] = int(p.split()[0])
 
-        result = subprocess.run(
-            ["git", "diff", "--name-only"],
+        # 也检查缓存的变更
+        r2 = subprocess.run(
+            ["git", "diff", "--cached", "--stat"],
             cwd=root, capture_output=True, text=True, timeout=10
         )
-        if result.returncode == 0:
-            files = result.stdout.strip()
-            if files:
-                return len(files.splitlines())
+        if r2.returncode == 0:
+            stat2 = r2.stdout.strip()
+            if stat2 and stat2 != stat:
+                parts = stat2.split(",")
+                for p in parts:
+                    p = p.strip()
+                    if "file" in p and "changed" in p:
+                        result["files_changed"] += int(p.split()[0])
     except Exception:
         pass
-
-    return 0
-
-
-def build_rich_context(root: Path) -> dict:
-    """从 agent_calls 提取 rich_context（工具使用分布等）"""
-    agent_calls_file = root / ".claude" / "data" / "agent_calls.jsonl"
-    context = {
-        "agent_count": 0,
-        "agents": [],
-    }
-
-    if agent_calls_file.exists():
-        try:
-            content = agent_calls_file.read_text().strip()
-            if content:
-                agent_list = []
-                for line in content.splitlines():
-                    try:
-                        call = json.loads(line)
-                        agent = call.get("agent", "")
-                        if agent:
-                            agent_list.append(agent)
-                    except json.JSONDecodeError:
-                        continue
-
-                if agent_list:
-                    counter = Counter(agent_list)
-                    context["agent_count"] = len(agent_list)
-                    context["agents"] = list(counter.keys())
-                    context["agent_distribution"] = dict(counter)
-        except OSError:
-            pass
-
-    return context
+    return result
 
 
-def build_session_summary(root: Path) -> dict:
+def build_session(root: Path) -> dict:
     """从所有数据源构建完整的会话摘要"""
+    session_start = read_session_start(root)
+    hook_data = {}
     try:
         raw = sys.stdin.read().strip()
-        hook_data = json.loads(raw) if raw else {}
+        if raw:
+            hook_data = json.loads(raw)
     except (json.JSONDecodeError, OSError):
-        hook_data = {}
-
-    session_start = read_session_start(root)
+        pass
 
     session_id = hook_data.get("session_id", os.environ.get("CLAUDE_SESSION_ID"))
     if not session_id or session_id == "unknown":
         session_id = get_session_id_fallback(root)
 
     mode = session_start.get("mode", os.environ.get("CLAUDE_MODE", "solo"))
-
-    agents_used = aggregate_agent_calls(root)
-    tool_failures = aggregate_failures(root)
-    duration_minutes = calculate_duration(session_start)
-    git_files_changed = get_git_files_changed(root)
-    rich_context = build_rich_context(root)
+    duration = calculate_duration(session_start)
+    agent_stats = aggregate_agent_calls(root)
+    failure_stats = aggregate_failures(root)
+    git_stats = get_git_changes(root)
 
     return {
         "session_id": session_id,
         "timestamp": datetime.now().isoformat(),
         "mode": mode,
-        "duration_minutes": duration_minutes,
-        "agents_used": agents_used,
-        "skills_used": hook_data.get("skills_used", []),
-        "tool_failures": tool_failures,
-        "git_files_changed": git_files_changed,
-        "corrections": [],
-        "rich_context": rich_context,
+        "duration_minutes": duration,
+        "agents_used": agent_stats["agents"],
+        "agent_count": agent_stats["agent_count"],
+        "agent_distribution": agent_stats["agent_distribution"],
+        "agent_success_rate": (
+            agent_stats["success_count"] /
+            max(agent_stats["success_count"] + agent_stats["failure_count"], 1)
+        ),
+        "tool_failures": failure_stats["total"],
+        "failure_types": failure_stats["failure_types"],
+        "failure_tools": failure_stats["failure_tools"],
+        "git_files_changed": git_stats["files_changed"],
+        "git_lines_added": git_stats["lines_added"],
+        "git_lines_deleted": git_stats["lines_deleted"],
+        "corrections": hook_data.get("corrections", []),
+        "rich_context": {
+            "agent_stats": agent_stats,
+            "failure_stats": failure_stats,
+            "git_stats": git_stats,
+        },
     }
 
 
-def append_session(root: Path, session: dict) -> int:
+def append_session(root: Path, session: dict) -> Path:
     """追加一行到 sessions.jsonl"""
     data_dir = root / ".claude" / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
@@ -216,64 +287,47 @@ def append_session(root: Path, session: dict) -> int:
     with open(log_file, "a") as f:
         f.write(line)
 
-    return 0
+    return log_file
 
 
-def trigger_semantic_extraction(root: Path):
-    """异步触发语义提取"""
-    daemon_dir = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", root)) / "hooks" / "bin"
-    extract_script = daemon_dir / "extract_semantics.py"
-    if not extract_script.exists():
-        return False
-
-    subprocess.Popen(
-        [sys.executable, str(extract_script)],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    return True
+def should_trigger_analysis(session: dict, config: dict) -> bool:
+    """判断是否需要立即触发分析"""
+    if session.get("tool_failures", 0) >= 5:
+        return True
+    success_rate = session.get("agent_success_rate", 1.0)
+    if success_rate < 0.5:
+        return True
+    failure_types = session.get("failure_types", {})
+    for error_type, count in failure_types.items():
+        if count >= 3:
+            return True
+    return False
 
 
 def main():
     root = find_project_root()
-
-    session = build_session_summary(root)
+    session = build_session(root)
     append_session(root, session)
-
-    corrections = session.get("corrections", [])
-    has_corrections = bool(corrections) or bool(os.environ.get("CLAUDE_HAS_CORRECTIONS"))
-
-    if not has_corrections:
-        data_dir = root / ".claude" / "data"
-        failures_file = data_dir / "failures.jsonl"
-        if failures_file.exists():
-            try:
-                failures = failures_file.read_text().strip()
-                if failures and len(failures.splitlines()) > 0:
-                    has_corrections = True
-            except OSError:
-                pass
-
-    extraction_triggered = False
-    if has_corrections:
-        extraction_triggered = trigger_semantic_extraction(root)
 
     result = {
         "collected": True,
         "session_id": session["session_id"],
-        "extraction_triggered": extraction_triggered,
         "duration_minutes": session["duration_minutes"],
-        "agents_used": len(session["agents_used"]),
+        "agents_used": session["agents_used"],
+        "agent_count": session["agent_count"],
         "tool_failures": session["tool_failures"],
         "git_files_changed": session["git_files_changed"],
+        "timestamp": session["timestamp"],
     }
-    print(json.dumps(result))
+    print(json.dumps(result, ensure_ascii=False))
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(json.dumps({"collected": False, "warning": str(e)[:100]}), file=sys.stderr)
+        print(json.dumps({
+            "collected": False,
+            "error": str(e)[:200]
+        }), file=sys.stderr)
         sys.exit(0)

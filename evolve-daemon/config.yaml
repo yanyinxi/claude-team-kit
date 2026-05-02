@@ -1,35 +1,91 @@
-# evolve-daemon 配置文件
-# 自进化守护进程 — 独立于 Claude Code 运行
-
-daemon:
-  schedule: "*/30 * * * *"           # cron: 每 30 分钟检查一次
-  idle_trigger_minutes: 120          # 空闲触发: 120分钟无新会话后触发
-  extract_timeout_seconds: 5         # 语义提取超时
-
-thresholds:
-  min_new_sessions: 5               # 最少新会话数才触发分析
-  min_same_pattern_corrections: 3   # 同一 target 被纠正 ≥ 3 次触发
-  max_hours_since_last_analyze: 6   # 最长分析间隔（强制触发）
-
 claude_api:
-  extract_model: "claude-haiku-4-5"        # 语义提取用（成本 $0.0001/次）
-  extract_max_tokens: 512
-  extract_temperature: 0.1
-  analyze_model: "claude-sonnet-4-6"       # 深度分析用
   analyze_max_tokens: 4096
+  analyze_model: claude-sonnet-4-6
   analyze_temperature: 0.3
-
-safety:
-  max_proposals_per_day: 3          # 每天最多生成提案数
-  auto_close_days: 7                # 未处理提案自动关闭天数
-  breaker:                          # 熔断：同一 target 连续被拒 → 暂停
-    max_consecutive_rejects: 3
-    pause_days: 30
-
+  decide_max_tokens: 2048
+  decide_model: claude-sonnet-4-6
+  decide_temperature: 0.2
+  extract_max_tokens: 512
+  extract_model: claude-haiku-4-5
+  extract_temperature: 0.1
+daemon:
+  extract_timeout_seconds: 5
+  idle_trigger_minutes: 120
+  schedule: '*/30 * * * *'
+decay:
+  decay_floor: 0.1
+  half_life_days: 90
+  max_confidence: 0.95
+  min_reinforcement: 3
+  reinforcement_bonus: 0.05
+decision:
+  auto_apply_threshold: 0.8
+  enabled: true
+  high_risk_threshold: 0.5
+  require_human_review:
+  - security
+  - permission
+  - new_target
+  - multi_file
+  risk_rules:
+    high_risk_patterns:
+    - permission
+    - credential
+    - security
+    - auth
+    low_risk_patterns:
+    - comment
+    - format
+    - typo
+    - docs
+    - example
+notification:
+  channels:
+    email:
+      enabled: false
+      smtp_host: smtp.example.com
+      smtp_port: 587
+      to_addresses:
+      - admin@example.com
+  enabled: false
+observation:
+  check_interval_hours: 24
+  days: 7
+  metrics:
+    max_correction_rate: 0.2
+    max_failure_rate_delta: 0.1
+    min_success_rate: 0.8
 paths:
-  data_dir: ".claude/data"
-  proposals_dir: ".claude/proposals"
-  skills_dir: "skills"
-  agents_dir: "agents"
-  rules_dir: "rules"
-  instinct_dir: "instinct"
+  agents_dir: agents
+  backups_dir: .claude/data/backups
+  data_dir: .claude/data
+  instinct_dir: instinct
+  proposals_dir: .claude/proposals
+  rules_dir: rules
+  skills_dir: skills
+rollback:
+  auto_enabled: true
+  observe_before_rollback_hours: 24
+  triggers:
+  - success_rate_decreased
+  - correction_rate_increased
+  - failure_count_increased
+  - user_feedback_negative
+safety:
+  auto_close_days: 7
+  breaker:
+    max_consecutive_rejects: 3
+    max_rollbacks_per_week: 5
+    pause_days: 30
+  max_proposals_per_day: 3
+thresholds:
+  max_hours_since_last_analyze: 6
+  min_failure_count: 5
+  min_failure_rate: 0.5
+  min_failure_type_count: 3
+  min_new_sessions: 2
+  min_same_pattern_corrections: 3
+validation:
+  enabled: true
+  max_age_days: 90
+  quarantine_malformed: true

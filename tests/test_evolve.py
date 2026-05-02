@@ -180,9 +180,9 @@ def test_daemon_threshold_pattern_group():
 def test_rollback_keep_when_improved():
     global PASS, FAIL
     rollback = get_module("rollback")
-    baseline = {"task_success_rate": 0.8, "user_correction_rate": 0.2,
+    baseline = {"task_success_rate": 0.8, "correction_rate": 0.2,
                 "agent_failure_rate": 0.1, "satisfaction_score": 4.0}
-    metrics = {"task_success_rate": 0.85, "user_correction_rate": 0.15,
+    metrics = {"task_success_rate": 0.85, "correction_rate": 0.15,
                "agent_failure_rate": 0.08, "satisfaction_score": 4.2}
     decision = rollback.evaluate_proposal({}, metrics, baseline)
     if decision == "keep":
@@ -196,9 +196,9 @@ def test_rollback_keep_when_improved():
 def test_rollback_rollback_on_degradation():
     global PASS, FAIL
     rollback = get_module("rollback")
-    baseline = {"task_success_rate": 1.0, "user_correction_rate": 0.0,
+    baseline = {"task_success_rate": 1.0, "correction_rate": 0.0,
                 "agent_failure_rate": 0.0, "satisfaction_score": 5.0}
-    metrics = {"task_success_rate": 0.7, "user_correction_rate": 0.5,
+    metrics = {"task_success_rate": 0.7, "correction_rate": 0.5,
                "agent_failure_rate": 0.3, "satisfaction_score": 2.0}
     decision = rollback.evaluate_proposal({}, metrics, baseline)
     if decision == "rollback":
@@ -212,9 +212,9 @@ def test_rollback_rollback_on_degradation():
 def test_rollback_observe_on_neutral():
     global PASS, FAIL
     rollback = get_module("rollback")
-    baseline = {"task_success_rate": 0.8, "user_correction_rate": 0.2,
+    baseline = {"task_success_rate": 0.8, "correction_rate": 0.2,
                 "agent_failure_rate": 0.1, "satisfaction_score": 4.0}
-    metrics = {"task_success_rate": 0.8, "user_correction_rate": 0.2,
+    metrics = {"task_success_rate": 0.8, "correction_rate": 0.2,
                "agent_failure_rate": 0.1, "satisfaction_score": 4.0}
     decision = rollback.evaluate_proposal({}, metrics, baseline)
     if decision in ("keep", "observe"):
@@ -239,7 +239,7 @@ def test_rollback_collect_metrics():
         ]) + "\n")
         m = rollback.collect_metrics("test", metrics_dir)
         assert "task_success_rate" in m
-        assert "user_correction_rate" in m
+        assert "correction_rate" in m
         PASS += 1
         print("  ✅ rollback: collect_metrics 正常收集")
 

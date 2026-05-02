@@ -1,10 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "*", 
+      "*",
       "Bash(git *)",
       "Bash(xargs  *)",
-      "Bash(awk  *)"
+      "Bash(awk  *)",
+      "Bash(env)",
+      "Bash(python -m pytest * * )",
+      "Bash(python3 *)",
+      "Bash(chmod +x *)",
+      "Bash(ANTHROPIC_API_KEY=\"local-proxy\" ANTHROPIC_BASE_URL=\"http://127.0.0.1:5000\" python3 *)"
     ],
     "additionalDirectories": [
       "*"
