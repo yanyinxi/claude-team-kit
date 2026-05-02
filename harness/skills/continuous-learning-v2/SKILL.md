@@ -32,7 +32,7 @@ description: >
          ↓
 ┌────────────────────┐
 │  instinct-record   │ → 本能记录持久化
-│  (agents/instinct/) │
+│  (harness/instinct/) │
 └────────────────────┘
          ↓
 ┌────────────────────┐
