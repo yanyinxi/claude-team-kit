@@ -111,6 +111,28 @@
       "applied_count": 0,
       "source": "proposal-generated",
       "created_at": "2026-05-01T07:00:11.308275"
+    },
+    {
+      "id": "auto-a97194ec",
+      "pattern": "测试模式",
+      "context": "",
+      "correction": "测试纠正",
+      "root_cause": "",
+      "confidence": 0.5,
+      "applied_count": 0,
+      "source": "auto-detected",
+      "created_at": "2026-05-02T08:30:32.899769"
+    },
+    {
+      "id": "auto-b4755426",
+      "pattern": "检测到多纠正热点: agent:backend-dev",
+      "context": "",
+      "correction": "见提案文件",
+      "root_cause": "",
+      "confidence": 0.5,
+      "applied_count": 0,
+      "source": "proposal-generated",
+      "created_at": "2026-05-02T08:30:32.940125"
     }
   ]
 }

@@ -2,14 +2,17 @@
 """
 SessionStart Hook: 注入项目上下文。
 读取 CLAUDE.md 和当前目录结构，为 AI 提供项目概况。
+同时记录会话开始时间到 .claude/data/.session_start。
 
 设计原则:
-  - 只读，不改文件
+  - 只读，不改文件（除 .session_start 用于性能追踪）
   - 轻量（< 50ms）
   - 输出精简摘要（< 200 tokens）
 """
+import json
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -56,8 +59,26 @@ def scan_project_structure(root: Path) -> str:
     return "\n".join(entries[:20]) if entries else ""
 
 
+def record_session_start(root: Path):
+    """记录会话开始时间，用于后续计算 duration"""
+    data_dir = root / ".claude" / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    session_start_file = data_dir / ".session_start"
+    session_data = {
+        "timestamp": datetime.now().isoformat(),
+        "mode": os.environ.get("CLAUDE_MODE", "solo"),
+        "session_id": os.environ.get("CLAUDE_SESSION_ID", ""),
+    }
+
+    session_start_file.write_text(json.dumps(session_data, ensure_ascii=False))
+
+
 def main():
     root = find_project_root()
+
+    # 记录会话开始时间
+    record_session_start(root)
 
     claude_md = read_claude_md(root)
     structure_hint = scan_project_structure(root)
