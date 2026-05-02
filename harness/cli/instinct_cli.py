@@ -5,10 +5,10 @@ instinct_cli.py — Claude Harness Kit 本能记录管理 CLI
 Usage:
   python3 harness/cli/instinct_cli.py status
   python3 harness/cli/instinct_cli.py status [--domain <domain>]
-  python3 cli/instinct_cli.py export [--min-confidence N] [--format json|markdown]
-  python3 cli/instinct_cli.py import <file>
-  python3 cli/instinct_cli.py evolve [--dry-run]
-  python3 cli/instinct_cli.py add <domain> <trigger> <pattern> [--confidence N]
+  python3 harness/cli/instinct_cli.py export [--min-confidence N] [--format json|markdown]
+  python3 harness/cli/instinct_cli.py import <file>
+  python3 harness/cli/instinct_cli.py evolve [--dry-run]
+  python3 harness/cli/instinct_cli.py add <domain> <trigger> <pattern> [--confidence N]
 """
 
 import sys
@@ -19,7 +19,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from collections import defaultdict
 
-# ── Data Path (FIX-3: 项目级 agents/instinct/，非 ~/.claude/) ─────────────────
+# ── Data Path (canonical: harness/instinct/) ────────────────────────
 
 INSTINCT_ROOT = Path(__file__).parent.parent / "instinct"
 INSTINCT_FILE = INSTINCT_ROOT / "instinct-record.json"
