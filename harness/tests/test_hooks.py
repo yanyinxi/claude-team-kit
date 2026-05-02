@@ -2,7 +2,7 @@
 """
 Hook 集成测试套件 — 模拟 stdin 输入验证各 hook 脚本输出格式。
 覆盖:
-  - collect-session.py: 会话摘要聚合
+  - collect_session.py: 会话摘要聚合
   - collect-agent.py: Agent 调用采集
   - collect-failure.py: 失败记录采集
   - safety-check.sh: 安全拦截
@@ -52,13 +52,13 @@ def run_sh_hook(script: Path, stdin_data: dict, timeout: int = 10) -> tuple[int,
     return result.returncode, result.stdout, result.stderr
 
 
-# ── 5.1 collect-session.py 测试 ──────────────────────────────────────────────
+# ── 5.1 collect_session.py 测试 ──────────────────────────────────────────────
 
 def test_collect_session_basic():
     global PASS, FAIL
-    script = HOOKS_DIR / "collect-session.py"
+    script = HOOKS_DIR / "collect_session.py"
     if not script.exists():
-        print("  ⏭  skip: collect-session.py not found")
+        print("  ⏭  skip: collect_session.py not found")
         return
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -78,18 +78,18 @@ def test_collect_session_basic():
                 result = json.loads(out)
                 assert result.get("collected") is True
                 PASS += 1
-                print("  ✅ collect-session.py: 正常聚合")
+                print("  ✅ collect_session.py: 正常聚合")
             except json.JSONDecodeError:
                 FAIL += 1
-                print(f"  ❌ collect-session.py: 输出非 JSON → {out[:80]}")
+                print(f"  ❌ collect_session.py: 输出非 JSON → {out[:80]}")
         else:
             FAIL += 1
-            print(f"  ❌ collect-session.py: exit {rc} → {err[:80]}")
+            print(f"  ❌ collect_session.py: exit {rc} → {err[:80]}")
 
 
 def test_collect_session_with_corrections_triggers_extraction():
     global PASS, FAIL
-    script = HOOKS_DIR / "collect-session.py"
+    script = HOOKS_DIR / "collect_session.py"
     if not script.exists():
         return
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -107,13 +107,13 @@ def test_collect_session_with_corrections_triggers_extraction():
                 # corrections 存在时会触发提取（可能因无 API Key 而跳过，但字段应有）
                 assert "collected" in result
                 PASS += 1
-                print("  ✅ collect-session.py: corrections 触发路径正常")
+                print("  ✅ collect_session.py: corrections 触发路径正常")
             except (json.JSONDecodeError, AssertionError):
                 FAIL += 1
-                print(f"  ❌ collect-session.py: corrections 路径失败")
+                print(f"  ❌ collect_session.py: corrections 路径失败")
         else:
             FAIL += 1
-            print(f"  ❌ collect-session.py: exit {rc}")
+            print(f"  ❌ collect_session.py: exit {rc}")
 
 
 # ── 5.1 collect-agent.py 测试 ──────────────────────────────────────────────────
@@ -502,8 +502,8 @@ def main():
     print("Hook 集成测试套件")
     print("=" * 60)
 
-    # collect-session.py
-    print("\n[collect-session.py]")
+    # collect_session.py
+    print("\n[collect_session.py]")
     test_collect_session_basic()
     test_collect_session_with_corrections_triggers_extraction()
 

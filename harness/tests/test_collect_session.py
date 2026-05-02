@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-测试: collect-session.py 数据采集功能
+测试: collect_session.py 数据采集功能
 
 验证:
 1. 会话数据正确写入 sessions.jsonl
