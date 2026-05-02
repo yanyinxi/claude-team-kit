@@ -40,7 +40,7 @@
         "ship", "security-audit", "database-designer", "api-designer", "tdd"
       ],
       "rules": ["general.md", "collaboration.md", "security.md", "quality-gates.md"],
-      "hooks": ["safety-check.sh", "quality-gate.sh", "collect-session.py", "collect-agent.py"],
+      "hooks": ["safety-check.sh", "quality-gate.sh", "collect_session.py", "collect-agent.py"],
       "size": "~5MB"
     },
     "full": {
@@ -65,7 +65,7 @@
       "safety-check.sh": ["Bash"],
       "quality-gate.sh": ["Read"],
       "tdd-check.sh": ["Read"],
-      "collect-session.py": ["Read", "Write"],
+      "collect_session.py": ["Read", "Write"],
       "collect-agent.py": ["Read", "Write"],
       "collect-failure.py": ["Read", "Write"],
       "collect-skill.py": ["Read", "Write"],

@@ -390,27 +390,27 @@ thresholds:
   # 超过此时间自动触发分析
   # 建议值：1-24
 
-  min_failure_count: 5
+  min_failure_count: 3
   # 单个会话的最小失败次数
   # 超过此值触发分析
   # 建议值：3-10
 
-  min_failure_rate: 0.5
+  min_failure_rate: 0.3
   # Agent 最小失败率阈值
   # 失败率超过此值触发分析
   # 建议值：0.3-0.7
 
-  min_failure_type_count: 3
+  min_failure_type_count: 2
   # 同类型失败的最小次数
   # 同一类型的失败达到此数触发分析
   # 建议值：2-5
 
-  min_new_sessions: 2
+  min_new_sessions: 1
   # 最小新会话数
   # 积累这么多新会话后触发分析
   # 建议值：2-10
 
-  min_same_pattern_corrections: 3
+  min_same_pattern_corrections: 2
   # 同一模式被纠正的最小次数
   # 同一模式被纠正达到此数触发分析
   # 建议值：2-5
@@ -425,7 +425,7 @@ validation:
   # true  : 启用，验证收集的数据
   # false : 禁用
 
-  max_age_days: 90
+  max_age_days: 30
   # 数据最大保存天数
   # 超过此时间的数据会被清理
   # 建议值：30-180

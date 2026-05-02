@@ -7,6 +7,7 @@ model: sonnet
 permissionMode: acceptEdits
 isolation: worktree
 tools: Read, Write, Edit, Bash, Grep, Glob, TodoWrite
+context: fork
 skills: migration
 ---
 

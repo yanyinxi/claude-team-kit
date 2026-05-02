@@ -109,7 +109,7 @@ HOOK_SCRIPTS = {
     "collect-failure.py": HOOKS_BIN_DIR / "collect-failure.py",
     "collect-agent.py": HOOKS_BIN_DIR / "collect-agent.py",
     "collect-skill.py": HOOKS_BIN_DIR / "collect-skill.py",
-    "collect-session.py": HOOKS_BIN_DIR / "collect-session.py",
+    "collect_session.py": HOOKS_BIN_DIR / "collect_session.py",
     "collect_error.py": HOOKS_BIN_DIR / "collect_error.py",
     "output-secret-filter.py": HOOKS_BIN_DIR / "output-secret-filter.py",
     "context-injector.py": HOOKS_BIN_DIR / "context-injector.py",

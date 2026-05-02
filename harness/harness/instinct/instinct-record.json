@@ -1,0 +1,38 @@
+{
+  "description": "Instinct System",
+  "version": 1,
+  "records": [
+    {
+      "id": "auto-9b6046c4",
+      "pattern": "测试模式",
+      "context": "",
+      "correction": "测试纠正",
+      "root_cause": "",
+      "confidence": 0.5,
+      "applied_count": 0,
+      "reinforcement_count": 0,
+      "source": "auto-detected",
+      "created_at": "2026-05-03T06:26:57.729527",
+      "last_reinforced_at": null,
+      "decay_status": "active",
+      "decay_weight": 1.0,
+      "updated_at": "2026-05-03T06:26:57.729538"
+    },
+    {
+      "id": "auto-b1a16d57",
+      "pattern": "检测到多纠正热点: agent:backend-dev",
+      "context": "",
+      "correction": "见提案文件",
+      "root_cause": "",
+      "confidence": 0.5,
+      "applied_count": 0,
+      "reinforcement_count": 0,
+      "source": "proposal-generated",
+      "created_at": "2026-05-03T06:26:57.784211",
+      "last_reinforced_at": null,
+      "decay_status": "active",
+      "decay_weight": 1.0,
+      "updated_at": "2026-05-03T06:26:57.784219"
+    }
+  ]
+}

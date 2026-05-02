@@ -6,6 +6,7 @@ description: >
 model: sonnet
 permissionMode: default
 tools: Read, Write, Edit, Bash, Grep, Glob, TodoWrite
+context: fork
 skills: testing
 ---
 

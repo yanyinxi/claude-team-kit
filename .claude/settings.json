@@ -2,12 +2,13 @@
   "permissions": {
     "allow": [
       "*",
-      "Bash(python3 -c ' *)",
-      "Bash(python3 -m * *)",
-      "Bash(kill *)"
+      "WebSearch",
+      "WebFetch(domain:docs.anthropic.com)"
     ],
+    "defaultMode": "bypassPermissions",
     "additionalDirectories": [
-      "*"
+      "*",
+      "/Users/yanyinxi/.claude"
     ]
   }
 }

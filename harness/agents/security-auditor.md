@@ -7,6 +7,7 @@ description: >
 model: opus
 permissionMode: default
 tools: Read, Grep, Glob
+context: fork
 skills: security-audit
 ---
 

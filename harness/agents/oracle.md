@@ -15,7 +15,7 @@ model: opus
 permissionMode: default
 skills: karpathy-guidelines, architecture-design
 disallowed-tools: Write, Edit, Bash, Agent
-context: global
+context: fork
 ---
 
 # Oracle Agent - 只读高级咨询专家

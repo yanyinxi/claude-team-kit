@@ -15,7 +15,7 @@ model: haiku
 permissionMode: default
 maxTurns: 30
 skills: karpathy-guidelines
-context: global
+context: fork
 ---
 
 # Explore Agent - 代码库探索专家

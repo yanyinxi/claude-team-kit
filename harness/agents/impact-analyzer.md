@@ -7,6 +7,7 @@ model: haiku
 permissionMode: default
 maxTurns: 30
 tools: Read, Grep, Glob
+context: fork
 ---
 
 # Impact Analyzer — 影响范围评估器

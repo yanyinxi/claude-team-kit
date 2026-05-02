@@ -8,6 +8,7 @@ model: haiku
 permissionMode: default
 maxTurns: 30
 tools: Read, Grep, Glob
+context: fork
 ---
 
 # Codebase Analyzer — 项目结构分析器

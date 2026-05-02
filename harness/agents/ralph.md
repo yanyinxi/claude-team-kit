@@ -5,9 +5,10 @@ description: >
   当要求零容忍质量标准时使用，触发词：零容忍、质量优先、核心逻辑
 model: sonnet
 permissionMode: acceptEdits
-isolation: worktree
+isolation: acceptEdits
 maxTurns: 50
 tools: Read, Write, Edit, Bash, Grep, Glob, TodoWrite
+context: fork
 skills: tdd, testing
 ---
 

@@ -19,7 +19,7 @@
     ],
     "Stop": [
       {
-        "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect-session.py", "timeout": 10 }]
+        "hooks": [{ "type": "command", "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect_session.py", "timeout": 10 }]
       }
     ]
   }

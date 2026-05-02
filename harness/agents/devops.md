@@ -8,6 +8,7 @@ model: sonnet
 permissionMode: acceptEdits
 isolation: worktree
 tools: Read, Write, Edit, Bash, Grep, Glob
+context: fork
 ---
 
 # DevOps 工程师

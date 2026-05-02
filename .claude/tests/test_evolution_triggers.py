@@ -44,7 +44,7 @@ def fail(msg):
 
 def make_session(session_id, corrections=None, tool_failures=0, skills_used=None,
                  status="success", timestamp=None, correction_count=0, satisfaction=None):
-    """Helper: create a session record matching collect-session.py output schema."""
+    """Helper: create a session record matching collect_session.py output schema."""
     s = {
         "session_id": session_id,
         "timestamp": timestamp or datetime.now().isoformat(),

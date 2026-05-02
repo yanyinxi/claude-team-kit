@@ -5,6 +5,7 @@ description: >
   自动生成修复提案并提交 PR，保持知识库的健康度。触发词：清理、知识回收、过期
 model: sonnet
 tools: Read, Grep, Glob, Bash
+context: fork
 disallowed-tools: Write, Edit
 permissionMode: default
 maxTurns: 30

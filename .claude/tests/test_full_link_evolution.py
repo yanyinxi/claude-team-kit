@@ -428,7 +428,7 @@ def test_evolution_closed_loop():
     print("\n📋 Integration: 进化闭环")
 
     # Stage 1: Collection
-    collectors = ["collect-session.py", "collect-agent.py", "collect-skill.py", "collect-failure.py"]
+    collectors = ["collect_session.py", "collect-agent.py", "collect-skill.py", "collect-failure.py"]
     for c in collectors:
         assert (HOOKS_DIR / c).exists(), f"{c} should exist"
     ok(f"Stage 1 采集: {len(collectors)} 个 Hook 脚本")

@@ -5,6 +5,7 @@ model: sonnet
 permissionMode: default
 maxTurns: 20
 tools: Read, Write, Grep, Glob
+context: fork
 ---
 
 # Learner — 知识提取器

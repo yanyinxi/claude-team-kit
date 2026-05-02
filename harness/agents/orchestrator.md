@@ -4,6 +4,7 @@ description: 多 Agent 任务编排与调度中心，负责任务分析、并行
 model: sonnet
 permissionMode: default
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, TodoWrite
+context: fork
 skills: task-distribution, parallel-dispatch
 ---
 

@@ -7,6 +7,7 @@ description: >
 model: sonnet
 permissionMode: default
 tools: Read, Bash, Grep, Glob
+context: fork
 ---
 
 # Verifier — 专项验证器
