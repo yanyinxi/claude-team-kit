@@ -55,3 +55,4 @@ htmlcov/
 # Temporary
 tmp/
 *.tmp
+harness/.claude/data/rate-limits/
