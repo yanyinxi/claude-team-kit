@@ -37,7 +37,7 @@ def get_llm_config() -> dict:
         "analyze_model": model or "claude-sonnet-4-6-20250514",
         "decide_model": model or "claude-sonnet-4-6-20250514",
         # Haiku 参数（快速分类）
-        "extract_max_tokens": 4096,
+        "extract_max_tokens": 8192,
         "extract_temperature": 0.1,
         # Sonnet 参数（深度分析）
         "analyze_max_tokens": 4096,

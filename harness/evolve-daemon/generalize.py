@@ -53,7 +53,7 @@ def call_haiku(system: str, user: str, config: dict | None = None) -> dict | Non
         model = (config or {}).get("extract_model") or get_haiku_model()
         response = client.messages.create(
             model=model,
-            max_tokens=4096,
+            max_tokens=8192,
             temperature=0.1,
             system=system,
             messages=[{"role": "user", "content": user}],
@@ -167,10 +167,16 @@ def call_llm_fallback(user: str, errors: list[dict]) -> list[dict]:
 def build_step1_prompt(errors: list[dict], kb: list[dict]) -> tuple[str, str]:
     """构建第一步 prompt：批量关联分析"""
 
-    # 格式化知识库
+    # 格式化知识库 — 只显示高置信度条目，避免 prompt 过长
     kb_text = ""
     if kb:
-        for entry in kb[:20]:  # 最多显示20条
+        # 按置信度 × 验证次数排序，取最相关的 top 10
+        scored = sorted(
+            kb,
+            key=lambda e: e.get('confidence', 0) * (e.get('validation_count', 0) + 1),
+            reverse=True,
+        )
+        for entry in scored[:10]:  # 最多显示10条
             kb_text += f"""- [{entry['id']}] {entry['error_type']}
     根因: {entry.get('root_cause', 'N/A')}
     具体例子: {', '.join(entry.get('specific_examples', [])[:3])}
