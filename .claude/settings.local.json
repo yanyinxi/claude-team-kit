@@ -1,8 +1,19 @@
 {
   "permissions": {
+    "allow": [
+      "*",
+      "Bash(python3 -m pytest harness/tests/test_knowledge.py::TestKnowledgeRecommender::test_load_evolved_knowledge -v -s)",
+      "Bash(python3 -m pytest harness/tests/test_knowledge.py -v)",
+      "Bash(python3 -m pytest harness/tests/ -v)",
+      "Bash(python3 -m pytest harness/tests/test_error_collection.py -v)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
+    ],
     "defaultMode": "bypassPermissions",
-    "allow": ["*"],
-    "additionalDirectories": ["*"]
+    "additionalDirectories": [
+      "*"
+    ]
   },
   "enabledPlugins": {},
   "extraKnownMarketplaces": {

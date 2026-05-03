@@ -1,0 +1,105 @@
+{
+  "generated_at": "2026-05-03T11:47:52.479686",
+  "input": {
+    "task": null,
+    "skill": "testing",
+    "agent": "debugger",
+    "failure": null
+  },
+  "recommendations": {
+    "skill_based": [
+      {
+        "id": "guideline-001",
+        "name": "Python 代码风格规范",
+        "type": "guideline",
+        "description": "项目中 Python 代码的统一风格要求",
+        "score": 0.9,
+        "maturity": "draft",
+        "source": "guideline/coding-style.json",
+        "usage_count": 1,
+        "content_preview": "使用 type hints 标注函数参数和返回值; 优先使用 Pathlib 而非字符串操作路径; 使用 f-string 进行字符串格式化"
+      },
+      {
+        "id": "pitfall-001",
+        "name": "JSON 文件写入陷阱",
+        "type": "pitfall",
+        "description": "写入 JSON 时容易出现的编码和格式化问题",
+        "score": 0.9,
+        "maturity": "draft",
+        "source": "pitfall/common-mistakes.json",
+        "usage_count": 1,
+        "content_preview": "使用 open() 写入 JSON 时忘记指定 encoding='utf-8'"
+      },
+      {
+        "id": "process-001",
+        "name": "发布前检查清单",
+        "type": "process",
+        "description": "每次发布前的标准检查流程",
+        "score": 0.9,
+        "maturity": "draft",
+        "source": "process/release-checklist.json",
+        "usage_count": 1,
+        "content_preview": "运行全部测试: npm test; 检查版本号: cat package.json | grep version; 更新 CHANGELOG.md"
+      }
+    ],
+    "agent_based": [
+      {
+        "id": "guideline-001",
+        "name": "Python 代码风格规范",
+        "type": "guideline",
+        "description": "项目中 Python 代码的统一风格要求",
+        "score": 0.35,
+        "maturity": "draft",
+        "source": "guideline/coding-style.json",
+        "usage_count": 1,
+        "content_preview": "使用 type hints 标注函数参数和返回值; 优先使用 Pathlib 而非字符串操作路径; 使用 f-string 进行字符串格式化"
+      },
+      {
+        "id": "pitfall-001",
+        "name": "JSON 文件写入陷阱",
+        "type": "pitfall",
+        "description": "写入 JSON 时容易出现的编码和格式化问题",
+        "score": 0.35,
+        "maturity": "draft",
+        "source": "pitfall/common-mistakes.json",
+        "usage_count": 1,
+        "content_preview": "使用 open() 写入 JSON 时忘记指定 encoding='utf-8'"
+      }
+    ],
+    "merged": [
+      {
+        "id": "guideline-001",
+        "name": "Python 代码风格规范",
+        "type": "guideline",
+        "description": "项目中 Python 代码的统一风格要求",
+        "score": 0.9,
+        "maturity": "draft",
+        "source": "guideline/coding-style.json",
+        "usage_count": 1,
+        "content_preview": "使用 type hints 标注函数参数和返回值; 优先使用 Pathlib 而非字符串操作路径; 使用 f-string 进行字符串格式化"
+      },
+      {
+        "id": "pitfall-001",
+        "name": "JSON 文件写入陷阱",
+        "type": "pitfall",
+        "description": "写入 JSON 时容易出现的编码和格式化问题",
+        "score": 0.9,
+        "maturity": "draft",
+        "source": "pitfall/common-mistakes.json",
+        "usage_count": 1,
+        "content_preview": "使用 open() 写入 JSON 时忘记指定 encoding='utf-8'"
+      },
+      {
+        "id": "process-001",
+        "name": "发布前检查清单",
+        "type": "process",
+        "description": "每次发布前的标准检查流程",
+        "score": 0.9,
+        "maturity": "draft",
+        "source": "process/release-checklist.json",
+        "usage_count": 1,
+        "content_preview": "运行全部测试: npm test; 检查版本号: cat package.json | grep version; 更新 CHANGELOG.md"
+      }
+    ]
+  }
+}
