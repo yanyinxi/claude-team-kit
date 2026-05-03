@@ -16,6 +16,7 @@
   8. 上下文: 上下文切换频率、知识复用率、多轮连贯性
 """
 import json
+import re
 import statistics
 from collections import Counter, defaultdict
 from pathlib import Path

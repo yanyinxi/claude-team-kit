@@ -125,7 +125,7 @@ architect, backend-dev, code-reviewer, codebase-analyzer, database-dev, debugger
 
 ## 相关知识
 - 项目知识: `.claude/knowledge/` 或 `harness/knowledge/manual/`
-- 团队规范: `.claude/rules/`
+- 团队规范: `harness/rules/`
 - 设计文档: `harness/docs/`
 - 进化数据: `harness/knowledge/evolved/` (原 `harness/evolve-daemon/knowledge/`)
 - 本能记录: `harness/instinct/`
