@@ -1,24 +1,22 @@
-"""CHK 版本管理 - 单一信源"""
-__version__ = "0.4.0"
-__version_info__ = (0, 4, 0)
+"""CHK 版本管理 - 从 version.json 读取"""
+import json
+from pathlib import Path
+
+VERSION_JSON = Path(__file__).parent / "version.json"
 
 def get_version() -> str:
-    return __version__
+    """获取当前版本"""
+    if VERSION_JSON.exists():
+        data = json.loads(VERSION_JSON.read_text())
+        return data.get("version", "0.0.0")
+    return "0.0.0"
 
 def get_version_info() -> tuple:
-    return __version_info__
+    """获取版本信息 (major, minor, patch)"""
+    if VERSION_JSON.exists():
+        data = json.loads(VERSION_JSON.read_text())
+        return tuple(data.get("version_info", [0, 0, 0]))
+    return (0, 0, 0)
 
-def bump_version(part: str = "patch") -> str:
-    """自动升级版本"""
-    major, minor, patch = __version_info__
-    if part == "major":
-        major += 1
-        minor = 0
-        patch = 0
-    elif part == "minor":
-        minor += 1
-        patch = 0
-    else:  # patch
-        patch += 1
-    new_version = f"{major}.{minor}.{patch}"
-    return new_version
+__version__ = get_version()
+__version_info__ = get_version_info()

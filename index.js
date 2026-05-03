@@ -70,7 +70,7 @@ function loadRules() {
 // Plugin info
 const pluginInfo = {
     name: 'claude-harness-kit',
-    version: '0.4.0',
+    version: '0.6.1',
     description: 'Claude Harness Kit — Human steers, Agents execute. 多 Agent 协作、通用 Skills、持续进化',
     agents: Object.keys(loadAgents()),
     skills: Object.keys(loadSkills()),
@@ -103,7 +103,7 @@ module.exports = {
 
     // Initialize plugin
     init: () => {
-        console.log('✓ Claude Harness Kit (CHK) v0.4.0 loaded');
+        console.log('✓ Claude Harness Kit (CHK) v0.6.1 loaded');
         console.log(`  Agents: ${pluginInfo.agents.length}`);
         console.log(`  Skills: ${pluginInfo.skills.length}`);
         console.log(`  Rules: ${pluginInfo.rules.length}`);
