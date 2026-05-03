@@ -366,13 +366,24 @@ def get_proposal_health(proposal_id: str, root: Path, config: dict) -> dict:
 def _promote_instinct_on_observation(proposal: dict, root: Path):
     """
     观察期通过后：增强 instinct 置信度 + 关联 target_file。
+    同时更新知识库的置信度。
     """
     try:
         from instinct_updater import promote_confidence, find_instinct_by_target
+        from kb_shared import update_kb_confidence
+
         target_file = proposal.get("target_file")
         linked_id = proposal.get("linked_instinct_id")
-        if linked_id:
+        linked_kb_id = proposal.get("linked_kb_id")
+
+        # 更新知识库置信度（优先使用 linked_kb_id）
+        if linked_kb_id:
+            update_kb_confidence(linked_kb_id, "success", root)
+        elif linked_id:
             promote_confidence(linked_id, delta=0.1, root=root)
+            if target_file:
+                from instinct_updater import link_instinct_to_target
+                link_instinct_to_target(linked_id, target_file, root=root)
         elif target_file:
             records = find_instinct_by_target(target_file, root)
             if records:

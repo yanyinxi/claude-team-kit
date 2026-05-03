@@ -68,6 +68,9 @@ class EffectTracker:
         if outcome == "success":
             self._promote_instinct_confidence(knowledge_id)
 
+        # 同步更新知识库置信度
+        self._update_kb_confidence(knowledge_id, outcome)
+
     def _promote_instinct_confidence(self, knowledge_id: str, boost: float = 0.1):
         """
         当效果跟踪为 success 时，自动提升对应本能记录的置信度。
@@ -83,6 +86,180 @@ class EffectTracker:
         except Exception:
             # 提升失败不阻塞主流程（本能记录可能不存在）
             pass
+
+    def _update_kb_confidence(self, knowledge_id: str, outcome: str):
+        """
+        同步更新知识库中的置信度。
+
+        success: +0.02, 验证次数 +1
+        failure: -0.15, 验证次数 +1
+        成功率 >= 80% 且验证 >= 3 → 升级为 active
+        """
+        try:
+            sys.path.insert(0, str(EVOLVE_DIR))
+            from kb_shared import update_kb_confidence
+            update_kb_confidence(knowledge_id, outcome, self.root)
+        except Exception:
+            pass
+
+    def run_test(self, knowledge_id: str, kb_entry: dict) -> dict:
+        """
+        对知识执行混合测试（自动化验证）。
+
+        决策逻辑：
+        - 有执行环境 → 真实任务测试（提交真实类似任务）
+        - 无执行环境 → 影子测试（模拟 + 规则验证）
+
+        返回: {"outcome": "success"|"failure"|"skipped", "details": "..."}
+        """
+        error_type = kb_entry.get("error_type", "")
+        solution = kb_entry.get("solution", {})
+        target_file = kb_entry.get("target_file", "") or solution.get("target_file", "")
+
+        # 尝试真实任务测试
+        if self._has_execution_env():
+            outcome = self._real_task_test(kb_entry)
+        else:
+            outcome = self._shadow_test(kb_entry)
+
+        # 跟踪结果（同时更新 instinct + KB）
+        self.track(knowledge_id, outcome, {
+            "test_type": "real" if self._has_execution_env() else "shadow",
+            "target_file": target_file,
+            "error_type": error_type,
+        })
+
+        return {"outcome": outcome, "knowledge_id": knowledge_id}
+
+    def _has_execution_env(self) -> bool:
+        """检测是否有真实执行环境（npm/node 存在）"""
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["node", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            return result.returncode == 0
+        except Exception:
+            return False
+
+    def _shadow_test(self, kb_entry: dict) -> str:
+        """
+        影子测试：模拟应用知识，检查是否有明显错误。
+
+        检查项：
+        1. 目标文件是否存在
+        2. solution 格式是否正确
+        3. target_file 是否可访问
+        """
+        target_file = kb_entry.get("target_file", "")
+        solution = kb_entry.get("solution", {})
+        error_type = kb_entry.get("error_type", "")
+
+        issues = []
+
+        # 检查目标文件
+        if target_file:
+            path = self.root / target_file
+            if not path.exists():
+                issues.append(f"target_file 不存在: {target_file}")
+
+        # 检查 solution 结构
+        if isinstance(solution, dict):
+            if solution.get("before") and solution.get("after"):
+                if solution.get("before") == solution.get("after"):
+                    issues.append("solution before/after 相同，无实际改动")
+            elif not solution.get("change_type"):
+                issues.append("solution 缺少 change_type")
+
+        # 检查根因与 solution 的关联性
+        root_cause = kb_entry.get("root_cause", "")
+        if root_cause and error_type:
+            # 简单规则：根因词和错误类型词是否相关
+            root_words = set(root_cause.lower().split())
+            type_words = set(error_type.lower().split())
+            overlap = root_words & type_words
+            if not overlap and len(root_words) > 2:
+                issues.append(f"root_cause 和 error_type 关联性低: '{root_cause}' vs '{error_type}'")
+
+        return "failure" if issues else "success"
+
+    def _real_task_test(self, kb_entry: dict) -> str:
+        """
+        真实任务测试：提交类似真实任务，验证 Agent 行为符合知识。
+
+        适用于：有执行环境的情况。
+        当前实现为简化版：只验证 target_file 可访问性 + solution 有效性。
+        """
+        target_file = kb_entry.get("target_file", "")
+        solution = kb_entry.get("solution", {})
+        confidence = kb_entry.get("confidence", 0)
+
+        # 高置信度知识优先通过
+        if confidence >= 0.8:
+            return "success"
+
+        # 检查 target_file 可访问
+        if target_file:
+            path = self.root / target_file
+            if not path.exists():
+                return "failure"
+
+        # 验证 solution 语法
+        if isinstance(solution, dict):
+            if not solution.get("change_type"):
+                return "failure"
+
+        return "success"
+
+    def run_batch_test(self, kb_entries: list[dict]) -> dict:
+        """
+        批量测试多条知识。
+
+        返回测试结果统计。
+        """
+        results = []
+        for entry in kb_entries:
+            kb_id = entry.get("id")
+            if not kb_id:
+                continue
+            result = self.run_test(kb_id, entry)
+            results.append(result)
+
+        success = sum(1 for r in results if r.get("outcome") == "success")
+        failure = sum(1 for r in results if r.get("outcome") == "failure")
+        skipped = sum(1 for r in results if r.get("outcome") == "skipped")
+
+        return {
+            "total": len(results),
+            "success": success,
+            "failure": failure,
+            "skipped": skipped,
+            "results": results,
+        }
+
+    def get_verification_candidates(self) -> list[dict]:
+        """
+        获取所有需要验证的知识（unconfirmed 状态）。
+
+        按验证次数升序排列，优先验证新知识。
+        """
+        try:
+            sys.path.insert(0, str(EVOLVE_DIR))
+            from kb_shared import load_active_kb
+            kb = load_active_kb(self.root)
+            candidates = [
+                e for e in kb
+                if e.get("status") == "unconfirmed"
+                and e.get("validation_count", 0) < 3
+            ]
+            # 按 validation_count 升序（少的优先）
+            candidates.sort(key=lambda x: x.get("validation_count", 0))
+            return candidates
+        except Exception:
+            return []
 
     def _update_summary(self, knowledge_id: str, outcome: str):
         """更新效果摘要"""

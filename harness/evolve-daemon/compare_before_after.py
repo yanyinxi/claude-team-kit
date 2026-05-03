@@ -87,14 +87,14 @@ def print_comparison():
 │                           新增文件                                                 │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 
-  ✅ smart_evolution_engine.py  - 智能进化引擎 (核心)
-  ✅ effect_tracker.py          - 效果跟踪器
-  ✅ smart_evolve.py            - 统一入口
-  ✅ knowledge/                 - 知识库目录
-       ├── evolution_history.jsonl   - 进化历史
+  ✅ integrated_evolution.py  - 会话级进化 (LLM 泛化分析)
+  ✅ generalize.py             - LLM 泛化判断逻辑 (3步分析)
+  ✅ kb_shared.py              - 统一知识库共享函数库
+  ✅ effect_tracker.py         - 效果跟踪器 (已更新)
+  ✅ knowledge/                - 知识库目录
+       ├── knowledge_base.jsonl    - 统一知识库 (45条已迁移)
        ├── effect_tracking.jsonl   - 效果跟踪
-       ├── effect_summary.json      - 效果摘要
-       └── knowledge_base.json      - 知识库索引
+       └── merge_cooldown.jsonl    - merge 熔断冷却期
 
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
 │                           真实案例展示                                              │

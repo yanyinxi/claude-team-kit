@@ -409,6 +409,51 @@ def check_thresholds(sessions: list[dict], config: dict, last_analyze_time: date
 
 def run_analysis(config: dict, root: Path, sessions: list[dict]):
     """执行分析并生成提案（4维度进化闭环）"""
+
+    # ── 新增：会话级进化 ────────────────────────────────
+    # 会话结束后自动调用 integrated_evolution.py
+    try:
+        from integrated_evolution import run_session_evolution
+        run_session_evolution(max_age_hours=0)  # 不限制会话，分析所有未知错误
+    except Exception:
+        pass  # 会话级进化失败不影响主流程
+
+    # ── 改动：分析前过滤已知错误 ──────────────────────
+    from kb_shared import load_active_kb, is_covered_by_kb
+    kb = load_active_kb(root)
+    kb_by_dimension = {}
+    for entry in kb:
+        dim = entry.get("dimension", "unknown")
+        kb_by_dimension.setdefault(dim, []).append(entry)
+
+    original_count = sum(len(s.get("corrections", [])) for s in sessions)
+    filtered_sessions = []
+    filtered_total = 0
+
+    for session in sessions:
+        original_corrections = session.get("corrections", [])
+        new_corrections = []
+        for corr in original_corrections:
+            corr_text = corr.get("user_correction", "")
+            covered, matched_id = is_covered_by_kb(corr_text, root)
+            if covered:
+                filtered_total += 1
+            else:
+                new_corrections.append(corr)
+        session["corrections"] = new_corrections
+        if new_corrections:
+            filtered_sessions.append(session)
+
+    if filtered_total > 0:
+        print(f"  [KB过滤] 跳过了 {filtered_total} 条已被知识库覆盖的错误")
+
+    if not filtered_sessions:
+        print("所有错误已被知识库覆盖，跳过 daemon 分析")
+        return
+
+    sessions = filtered_sessions
+
+    # ── 原有流程 ───────────────────────────────────
     # 1. 语义提取（每个新会话）
     try:
         from extract_semantics import analyze_sessions
@@ -481,6 +526,25 @@ def _execute_auto_apply(decision: dict, analysis: dict, config: dict, root: Path
     if not target_file or not suggested_change:
         return
 
+    # ── 新增：KB 置信度检查 ──────────────────────────
+    from kb_shared import (
+        load_active_kb, find_kb_by_dimension,
+        should_auto_apply, update_kb_confidence
+    )
+
+    kb = load_active_kb(root)
+    matching_kb = find_kb_by_dimension(dimension, target, root)
+    kb_id = matching_kb.get("id") if matching_kb else None
+
+    if matching_kb:
+        should_apply, reason = should_auto_apply(matching_kb)
+        if not should_apply:
+            # 置信度不够，降级为 propose
+            decision["action"] = "propose"
+            print(f"  [KB] {dimension}:{target} 降级为 propose ({reason})")
+            _execute_propose(decision, analysis, config, root)
+            return
+
     # 各维度执行
     if dimension == "agent":
         from agent_evolution import evolve_agent
@@ -489,6 +553,9 @@ def _execute_auto_apply(decision: dict, analysis: dict, config: dict, root: Path
         if result.get("success"):
             _apply_file_change(target_file, result.get("suggested_change", ""), config, root)
             print(f"✅ [Agent] {target}: {result.get('change_type')}")
+            # 关联 KB 条目
+            if kb_id:
+                update_kb_confidence(kb_id, "applied", root)
 
     elif dimension == "instinct":
         from instinct_updater import add_pattern
@@ -511,6 +578,36 @@ def _execute_propose(decision: dict, analysis: dict, config: dict, root: Path):
     proposal_path = generate_proposal(dimension_analysis, config, root)
     if proposal_path:
         print(f"📋 [{dimension}] {target}: 提案已生成")
+        # 关联 KB 条目（新增知识关联）
+        try:
+            from kb_shared import load_active_kb, find_kb_by_dimension, save_kb_entry, generate_kb_id, now_iso
+            kb = load_active_kb(root)
+            # 查找或创建对应的 KB 条目
+            matching_kb = find_kb_by_dimension(dimension, target, root)
+            if not matching_kb:
+                new_entry = {
+                    "id": generate_kb_id(),
+                    "created_at": now_iso(),
+                    "updated_at": now_iso(),
+                    "status": "unconfirmed",
+                    "error_type": f"{dimension}:{target}",
+                    "root_cause": decision.get("reason", ""),
+                    "solution": suggested_change[:200],
+                    "specific_examples": [],
+                    "generalized_from": [],
+                    "superseded_by": None,
+                    "confidence": 0.5,
+                    "validation_count": 0,
+                    "success_count": 0,
+                    "failure_count": 0,
+                    "source": "daemon_propose",
+                    "dimension": dimension,
+                    "target_file": target_file,
+                    "proposal_path": str(proposal_path),
+                }
+                save_kb_entry(new_entry, root)
+        except Exception:
+            pass
     else:
         print(f"⚠️ [{dimension}] {target}: 提案生成失败")
 
@@ -542,36 +639,40 @@ def _record_rollback_to_instinct(proposal: dict, root: Path, reason: str, config
     """
     将回滚事件记录到 instinct-record.json。
 
-    回滚被视为"负向验证"，降低关联本能的置信度。
+    回滚被视为"负向验证"，降低关联本能的置信度，
+    同时更新知识库的置信度。
     """
     try:
-        # 优先通过 linked_instinct_id 关联
+        from instinct_updater import demote_confidence, link_instinct_to_target
+        from kb_shared import update_kb_confidence
+
         linked_id = proposal.get("linked_instinct_id")
+        linked_kb_id = proposal.get("linked_kb_id")
         target_file = proposal.get("target_file", "")
         dimension = proposal.get("dimension", "unknown")
 
-        # 构建回滚 pattern 描述
         pattern = f"[回滚] {dimension}:{target_file}"
         correction = reason[:200] if reason else proposal.get("suggested_change", "观察期指标恶化")
         root_cause = reason
 
-        if linked_id:
-            # 直接关联到已有 instinct 记录并降低置信度
-            from instinct_updater import demote_confidence, link_instinct_to_target
+        # 更新知识库置信度（优先使用 linked_kb_id）
+        if linked_kb_id:
+            update_kb_confidence(linked_kb_id, "failure", root)
+        elif linked_id:
+            # 没有 KB 条目则降级 instinct
             demote_confidence(linked_id, delta=0.2, root=root)
             link_instinct_to_target(linked_id, target_file, root=root)
         else:
-            # 创建新的回滚记录
             from instinct_updater import add_pattern
-            record_id = add_pattern(
+            add_pattern(
                 pattern=pattern,
                 correction=correction,
                 root_cause=root_cause,
-                confidence=0.2,  # 回滚记录的初始置信度较低
+                confidence=0.2,
                 source="rollback-event",
             )
     except Exception:
-        pass  # instinct 更新失败不影响回滚主流程
+        pass
 
 
 def run_rollback_check(config: dict, root: Path) -> dict:

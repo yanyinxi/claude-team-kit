@@ -1,305 +1,244 @@
 #!/usr/bin/env python3
 """
-集成进化系统 - 真正集成到 CHK 钩子
+integrated_evolution.py — 会话级进化引擎（重写版）
 
-这个文件会被 CHK 的 Hook 调用，实现真正的自动化进化闭环
+核心职责：
+1. 会话结束时自动触发（Stop Hook）
+2. 收集本会话错误
+3. 调用 LLM 泛化分析（reuse / merge / new）
+4. 写入统一 knowledge_base.jsonl
+5. 冷启动迁移 + LLM 失败飞书通知
 
-数据流:
-  PostToolUseFailure → collect_error → error.jsonl
-                                           ↓
-  Stop Session → integrated_evolution.py → 分析 → 更新 Agent/Skill/Rule
-                                           ↓
-                                   knowledge/ 效果跟踪
+不修改任何文件，只积累知识。
+
+数据流：
+  Post Session Hook
+    → 收集本会话 error.jsonl
+    → LLM 批量泛化分析
+    → 写入 knowledge_base.jsonl
+    → 下次 daemon 调度时读取并应用
 """
 import json
 import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Optional
 
 # ── 路径配置 ────────────────────────────────────────────────
 PROJECT_ROOT = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
-CHK_ROOT = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", str(PROJECT_ROOT / "harness")))
+EVOLVE_DIR = PROJECT_ROOT / "harness" / "evolve-daemon"
+DATA_DIR = PROJECT_ROOT / ".claude" / "data"
+ERROR_LOG = DATA_DIR / "error.jsonl"
 
-ERROR_LOG = PROJECT_ROOT / ".claude" / "data" / "error.jsonl"
-EVOLUTION_DIR = CHK_ROOT / "evolve-daemon"
-KNOWLEDGE_DIR = EVOLUTION_DIR / "knowledge"
-KNOWLEDGE_DIR.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(EVOLVE_DIR))
+
+from kb_shared import (
+    load_knowledge_base,
+    migrate_from_instinct,
+    decay_knowledge,
+    print_kb_stats,
+    check_merge_cooldown,
+    notify_llm_failure,
+    now_iso,
+)
+from generalize import process_errors
 
 
-# ── 错误分析 ──────────────────────────────────────────────
-
-class RealEvolutionAnalyzer:
+# ── 错误收集 ───────────────────────────────────────────────
+def collect_session_errors(max_age_hours: int = 24) -> list[dict]:
     """
-    真正的进化分析器
-    每次分析都输出具体改了什么
+    收集本会话的错误。
+    只收集最近 max_age_hours 小时内的新错误。
     """
+    if not ERROR_LOG.exists():
+        return []
 
-    # 错误模式 → 维度映射
-    PATTERN_MAP = {
-        "permission": {"dimension": "rule", "type": "security"},
-        "denied": {"dimension": "rule", "type": "security"},
-        "timeout": {"dimension": "skill", "type": "performance"},
-        "超时": {"dimension": "skill", "type": "performance"},
-        "not found": {"dimension": "skill", "type": "context"},
-        "没有找到": {"dimension": "skill", "type": "context"},
-        "syntax": {"dimension": "agent", "type": "code_quality"},
-        "语法": {"dimension": "agent", "type": "code_quality"},
-        "架构": {"dimension": "agent", "type": "architecture"},
-        "architecture": {"dimension": "agent", "type": "architecture"},
-        "测试": {"dimension": "skill", "type": "testing"},
-        "test": {"dimension": "skill", "type": "testing"},
-        "安全": {"dimension": "rule", "type": "security"},
-        "security": {"dimension": "rule", "type": "security"},
-        "规则": {"dimension": "rule", "type": "quality"},
-        "rule": {"dimension": "rule", "type": "quality"},
-    }
+    errors = []
+    cutoff = None
+    if max_age_hours > 0:
+        from datetime import timedelta
+        cutoff = datetime.now() - timedelta(hours=max_age_hours)
 
-    def __init__(self):
-        self.errors = []
-        self.analysis_results = []
-        self.changes_made = []
+    with open(ERROR_LOG, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+                # 过滤：本会话的错误（通过 session_id 或时间判断）
+                ts = entry.get("timestamp", "")
+                if cutoff and ts:
+                    try:
+                        ts_dt = datetime.fromisoformat(ts)
+                        if ts_dt < cutoff:
+                            continue
+                    except (ValueError, TypeError):
+                        pass
 
-    def load_errors(self) -> int:
-        """加载错误数据"""
-        if not ERROR_LOG.exists():
-            return 0
+                errors.append({
+                    "error": entry.get("error", ""),
+                    "tool": entry.get("tool", entry.get("metadata", {}).get("tool", "unknown")),
+                    "context": _extract_context(entry),
+                    "session_id": entry.get("metadata", {}).get("session_id", "unknown"),
+                })
+            except json.JSONDecodeError:
+                continue
 
-        with open(ERROR_LOG, encoding="utf-8") as f:
-            lines = f.readlines()
-
-        self.errors = [json.loads(line) for line in lines if line.strip()]
-        return len(self.errors)
-
-    def analyze_error(self, error: dict) -> dict:
-        """分析单个错误，返回具体的改动"""
-        error_msg = error.get("error", "").lower()
-        context = error.get("context", "")
-
-        # 匹配模式
-        matched = None
-        for pattern, config in self.PATTERN_MAP.items():
-            if pattern in error_msg:
-                matched = config
-                break
-
-        if not matched:
-            matched = {"dimension": "instinct", "type": "general"}
-
-        # 生成具体改动
-        change = self._generate_change(matched, error)
-
-        return {
-            "error_id": error.get("id", "unknown"),
-            "dimension": matched["dimension"],
-            "error_type": matched["type"],
-            "change": change,
-            "timestamp": datetime.now().isoformat()
-        }
-
-    def _generate_change(self, config: dict, error: dict) -> dict:
-        """生成具体的改动内容"""
-        dimension = config["dimension"]
-        error_type = config["type"]
-        error_msg = error.get("error", "")
-
-        if dimension == "rule" and error_type == "security":
-            return {
-                "action": "增强规则",
-                "target": "安全规则",
-                "before": "基础安全检查",
-                "after": "增强安全检查 + 权限验证 + 路径检查",
-                "detail": f"添加对 '{error_msg[:30]}...' 的拦截"
-            }
-
-        elif dimension == "skill" and error_type == "performance":
-            return {
-                "action": "优化技能",
-                "target": "性能技能",
-                "before": "默认超时配置",
-                "after": "自适应超时 + 重试机制",
-                "detail": f"超时处理增强: {error_msg[:30]}"
-            }
-
-        elif dimension == "skill" and error_type == "context":
-            return {
-                "action": "增强上下文",
-                "target": "上下文感知",
-                "before": "简单路径匹配",
-                "after": "智能路径 + 环境检测 + 文件存在检查",
-                "detail": f"添加路径验证: {error_msg[:30]}"
-            }
-
-        elif dimension == "agent" and error_type == "architecture":
-            return {
-                "action": "优化架构建议",
-                "target": "架构 Agent",
-                "before": "无规模感知",
-                "after": "规模感知 + 性能评估 + 成本考量",
-                "detail": f"架构建议增强: {error_msg[:30]}"
-            }
-
-        elif dimension == "agent" and error_type == "code_quality":
-            return {
-                "action": "增强代码质量",
-                "target": "代码生成 Agent",
-                "before": "基础语法检查",
-                "after": "完整语法 + 类型检查 + 最佳实践",
-                "detail": f"代码质量增强: {error_msg[:30]}"
-            }
-
-        elif dimension == "skill" and error_type == "testing":
-            return {
-                "action": "增强测试技能",
-                "target": "测试技能",
-                "before": "基础测试生成",
-                "after": "智能测试 + Mock + 覆盖率分析",
-                "detail": f"测试增强: {error_msg[:30]}"
-            }
-
-        else:
-            return {
-                "action": "本能学习",
-                "target": "本能库",
-                "before": "基础模式",
-                "after": "增强模式 + 置信度提升",
-                "detail": f"本能增强: {error_msg[:30]}"
-            }
-
-    def analyze_all(self) -> List[dict]:
-        """分析所有错误"""
-        self.analysis_results = []
-        for error in self.errors:
-            result = self.analyze_error(error)
-            self.analysis_results.append(result)
-        return self.analysis_results
-
-    def aggregate_changes(self) -> dict:
-        """聚合所有改动"""
-        changes_by_dim = {}
-
-        for result in self.analysis_results:
-            dim = result["dimension"]
-            if dim not in changes_by_dim:
-                changes_by_dim[dim] = {
-                    "dimension": dim,
-                    "count": 0,
-                    "changes": [],
-                    "improvements": []
-                }
-
-            changes_by_dim[dim]["count"] += 1
-            changes_by_dim[dim]["changes"].append(result["change"])
-
-        return changes_by_dim
+    return errors
 
 
-# ── 知识写入 ──────────────────────────────────────────────
+def _extract_context(entry: dict) -> str:
+    """从错误条目中提取上下文"""
+    meta = entry.get("metadata", {})
+    ctx = meta.get("context", {})
 
-class KnowledgeWriter:
-    """将进化结果写入知识库"""
+    if isinstance(ctx, dict):
+        parts = []
+        if ctx.get("tool_input"):
+            ti = ctx.get("tool_input", {})
+            if isinstance(ti, dict):
+                cmd = ti.get("command", ti.get("query", str(ti)))
+                parts.append(f"命令: {cmd[:100]}")
+        if ctx.get("mode"):
+            parts.append(f"模式: {ctx.get('mode')}")
+        if ctx.get("agents_used"):
+            parts.append(f"Agent: {', '.join(ctx.get('agents_used', [])[:2])}")
+        return " | ".join(parts) if parts else ""
 
-    def __init__(self):
-        self.evolution_log = KNOWLEDGE_DIR / "evolution_log.jsonl"
-        self.summary = KNOWLEDGE_DIR / "evolution_summary.json"
-
-    def write(self, changes_by_dim: dict, analysis_results: list):
-        """写入改动"""
-        timestamp = datetime.now().isoformat()
-
-        # 写入进化日志
-        with open(self.evolution_log, "a", encoding="utf-8") as f:
-            for result in analysis_results:
-                record = {
-                    **result,
-                    "timestamp": timestamp,
-                    "written": True
-                }
-                f.write(json.dumps(record, ensure_ascii=False) + "\n")
-
-        # 更新摘要
-        self._update_summary(changes_by_dim, timestamp)
-
-    def _update_summary(self, changes_by_dim: dict, timestamp: str):
-        """更新摘要"""
-        if self.summary.exists():
-            summary = json.loads(self.summary.read_text())
-        else:
-            summary = {"total_analyses": 0, "dimensions": {}, "last_updated": ""}
-
-        summary["total_analyses"] += sum(c["count"] for c in changes_by_dim.values())
-        summary["last_updated"] = timestamp
-
-        for dim, data in changes_by_dim.items():
-            if dim not in summary["dimensions"]:
-                summary["dimensions"][dim] = {"count": 0, "latest_improvements": []}
-
-            summary["dimensions"][dim]["count"] += data["count"]
-            summary["dimensions"][dim]["latest_improvements"] = data["changes"][-3:]
-
-        self.summary.write_text(json.dumps(summary, ensure_ascii=False, indent=2))
+    return str(ctx)[:200]
 
 
-# ── 主入口 ──────────────────────────────────────────────
-
-def run_evolution_analysis():
+# ── 主流程 ─────────────────────────────────────────────────
+def run_session_evolution(max_errors: int = 10, max_age_hours: int = 24):
     """
-    进化分析主入口
-    被 Stop Hook 调用，分析本会话收集的错误
+    会话级进化主流程。
+
+    每次会话结束时调用。
     """
-    print("\n" + "="*60)
-    print("🔄 CHK 集成进化分析器 - 开始")
-    print("="*60)
+    print(f"\n{'='*60}")
+    print(f"🔄 CHK 会话级进化 - 开始")
+    print(f"  时间: {now_iso()}")
+    print(f"{'='*60}")
 
-    analyzer = RealEvolutionAnalyzer()
-    writer = KnowledgeWriter()
+    # ── 步骤0：冷启动迁移 ──────────────────────────────
+    migrated = migrate_from_instinct(PROJECT_ROOT)
+    if migrated > 0:
+        print(f"  [迁移] 从 instinct-record 迁移了 {migrated} 条")
 
-    # 1. 加载错误
-    error_count = analyzer.load_errors()
-    print(f"\n📥 加载错误: {error_count} 条")
+    # ── 步骤1：收集错误 ────────────────────────────────
+    errors = collect_session_errors(max_age_hours=max_age_hours)
+    print(f"\n  [收集] 本会话错误: {len(errors)} 条")
 
-    if error_count == 0:
-        print("没有错误需要分析")
+    if not errors:
+        print("  [结论] 没有新错误需要分析")
         return
 
-    # 2. 分析每个错误
-    print(f"\n🧠 分析 {error_count} 个错误...")
-    results = analyzer.analyze_all()
+    # 限制处理数量
+    if len(errors) > max_errors:
+        print(f"  [限制] 错误数量 {len(errors)} > {max_errors}，取前 {max_errors} 条")
+        errors = errors[:max_errors]
 
-    # 3. 输出具体改动
-    print("\n" + "-"*60)
-    print("📋 进化改动详情:")
-    print("-"*60)
+    # ── 步骤2：加载知识库状态 ─────────────────────────
+    kb_before = load_knowledge_base(PROJECT_ROOT)
+    kb_active = [e for e in kb_before if not e.get("superseded_by")]
+    print(f"  [知识库] 当前活跃知识: {len(kb_active)} 条")
 
-    for i, result in enumerate(results, 1):
-        change = result["change"]
-        print(f"\n  [{i}] {result['dimension'].upper()} 维度")
-        print(f"      动作: {change['action']}")
-        print(f"      目标: {change['target']}")
-        print(f"      之前: {change['before']}")
-        print(f"      之后: {change['after']}")
-        print(f"      详情: {change['detail']}")
+    # ── 步骤3：过滤已知错误 ──────────────────────────
+    from kb_shared import is_covered_by_kb
+    unknown_errors = []
+    covered_count = 0
 
-    # 4. 聚合改动
-    changes = analyzer.aggregate_changes()
+    for err in errors:
+        covered, _ = is_covered_by_kb(err.get("error", ""), PROJECT_ROOT)
+        if covered:
+            covered_count += 1
+        else:
+            unknown_errors.append(err)
 
-    print("\n" + "-"*60)
-    print("📊 维度汇总:")
-    print("-"*60)
-    for dim, data in changes.items():
-        print(f"  {dim}: {data['count']} 条改进")
+    if covered_count > 0:
+        print(f"  [过滤] {covered_count} 条已被知识库覆盖，跳过")
 
-    # 5. 写入知识库
-    writer.write(changes, results)
+    if not unknown_errors:
+        print("  [结论] 所有错误已被知识库覆盖，无需分析")
+        return
 
-    print("\n" + "="*60)
-    print("✅ 进化分析完成")
-    print("="*60)
-    print(f"\n📚 知识库已更新: {KNOWLEDGE_DIR}")
-    print(f"📝 进化日志: {writer.evolution_log}")
-    print(f"📊 摘要: {writer.summary}")
+    print(f"  [分析] 待分析新错误: {len(unknown_errors)} 条")
+
+    # ── 步骤4：LLM 泛化分析 ──────────────────────────
+    print(f"\n  [LLM] 调用泛化分析...")
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+
+    try:
+        results = process_errors(unknown_errors, PROJECT_ROOT, config=_load_config())
+    except Exception as e:
+        print(f"  [错误] 泛化分析失败: {e}")
+        if api_key:
+            notify_llm_failure(str(e), f"{len(unknown_errors)} 个错误分析失败", "")
+        return
+
+    # ── 步骤5：汇总结果 ───────────────────────────────
+    reuse_count = sum(1 for r in results if r.get("action") == "reuse")
+    merge_count = sum(1 for r in results if r.get("action") == "merge")
+    new_count = sum(1 for r in results if r.get("action") == "new")
+
+    print(f"\n  [结果]")
+    print(f"    reuse:  {reuse_count} 条")
+    print(f"    merge:  {merge_count} 条")
+    print(f"    new:    {new_count} 条")
+
+    # ── 步骤6：知识库更新后状态 ────────────────────────
+    kb_after = load_knowledge_base(PROJECT_ROOT)
+    kb_after_active = [e for e in kb_after if not e.get("superseded_by")]
+    print(f"\n  [知识库] 更新后活跃知识: {len(kb_after_active)} 条")
+
+    # ── 步骤7：退化检测 ───────────────────────────────
+    decay_knowledge(PROJECT_ROOT)
+
+    # ── 步骤8：打印统计 ───────────────────────────────
+    print_kb_stats(PROJECT_ROOT)
+
+    print(f"\n{'='*60}")
+    print(f"✅ 会话级进化完成")
+    print(f"{'='*60}")
 
 
+def _load_config() -> dict:
+    """加载配置"""
+    config_path = EVOLVE_DIR / "config.yaml"
+    if not config_path.exists():
+        return {}
+
+    try:
+        import yaml
+        with open(config_path) as f:
+            return yaml.safe_load(f)
+    except Exception:
+        return {}
+
+
+# ── 独立运行（调试用）─────────────────────────────────────
+def run_full_analysis():
+    """不限制会话，强制分析所有未知错误"""
+    print("\n[调试模式] 强制分析所有错误")
+    run_session_evolution(max_age_hours=0)
+
+
+# ── CLI ────────────────────────────────────────────────────
 if __name__ == "__main__":
-    run_evolution_analysis()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="CHK 会话级进化引擎")
+    parser.add_argument("--max-errors", type=int, default=10, help="最多处理错误数")
+    parser.add_argument("--max-age-hours", type=int, default=24, help="错误最大保留小时数")
+    parser.add_argument("--full", action="store_true", help="强制分析所有错误（调试用）")
+
+    args = parser.parse_args()
+
+    if args.full:
+        run_full_analysis()
+    else:
+        run_session_evolution(
+            max_errors=args.max_errors,
+            max_age_hours=args.max_age_hours,
+        )
