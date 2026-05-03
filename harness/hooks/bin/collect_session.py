@@ -127,38 +127,98 @@ def aggregate_agent_calls(root: Path, session_id: str = None) -> dict:
 
 
 def aggregate_failures(root: Path, session_id: str = None) -> dict:
-    """从 failures.jsonl 提取失败模式
+    """从 error.jsonl 提取失败模式（替代旧的 failures.jsonl）
+
+    迁移说明:
+      - v1: 写入 failures.jsonl (collect-failure.py)
+      - v2: 写入 error.jsonl (collect_error.py)
+      - 此函数同时兼容两种格式，过渡期后移除 failures.jsonl 支持
 
     Args:
         root: 项目根目录
         session_id: 如果提供，只统计匹配此 session_id 的记录
     """
+    error_file = root / ".claude" / "data" / "error.jsonl"
     failures_file = root / ".claude" / "data" / "failures.jsonl"
+
     result = {
         "total": 0,
         "failure_types": {},
         "failure_tools": {},
         "recent_failures": [],
     }
-    if not failures_file.exists():
-        return result
 
+    # 优先读取 error.jsonl (新格式)
+    if error_file.exists():
+        _read_error_jsonl(error_file, session_id, result)
+
+    # 补充读取 failures.jsonl (旧格式，向后兼容)
+    if failures_file.exists():
+        _read_failures_jsonl(failures_file, session_id, result)
+
+    return result
+
+
+def _read_error_jsonl(error_file: Path, session_id: str, result: dict) -> None:
+    """从 error.jsonl 读取错误记录"""
     try:
-        content = failures_file.read_text().strip()
+        content = error_file.read_text(encoding="utf-8").strip()
         if not content:
-            return result
+            return
 
-        lines = content.splitlines()
-        result["total"] = len(lines)
+        type_counter = Counter(result.get("failure_types", {}))
+        tool_counter = Counter(result.get("failure_tools", {}))
+        recent = list(result.get("recent_failures", []))
 
-        type_counter = Counter()
-        tool_counter = Counter()
-        recent = []
-
-        for line in lines:  # 处理所有行
+        for line in content.splitlines():
             try:
                 f = json.loads(line)
-                # 如果指定了 session_id，只统计匹配的记录
+                # 只处理 tool_failure 类型
+                if f.get("type") != "tool_failure":
+                    continue
+                # session_id 过滤
+                ctx = f.get("context", {})
+                if session_id and ctx.get("session_id") != session_id:
+                    continue
+
+                error_type = f.get("type", "unknown_error")
+                tool = f.get("tool", "unknown")
+                type_counter[error_type] += 1
+                tool_counter[tool] += 1
+                recent.append({
+                    "tool": tool,
+                    "error_type": error_type,
+                    "error": f.get("error", "")[:200],
+                    "timestamp": f.get("timestamp", ""),
+                    "source": f.get("source", ""),
+                })
+            except json.JSONDecodeError:
+                continue
+
+        result["failure_types"] = dict(type_counter)
+        result["failure_tools"] = dict(tool_counter)
+        result["recent_failures"] = recent[-20:]
+        result["total"] = len(recent)
+
+    except OSError:
+        pass
+
+
+def _read_failures_jsonl(failures_file: Path, session_id: str, result: dict) -> None:
+    """从 failures.jsonl 读取旧格式记录（向后兼容）"""
+    try:
+        content = failures_file.read_text(encoding="utf-8").strip()
+        if not content:
+            return
+
+        type_counter = Counter(result.get("failure_types", {}))
+        tool_counter = Counter(result.get("failure_tools", {}))
+        recent = list(result.get("recent_failures", []))
+
+        for line in content.splitlines():
+            try:
+                f = json.loads(line)
+                # session_id 过滤
                 if session_id and f.get("session_id") != session_id:
                     continue
 
@@ -177,12 +237,11 @@ def aggregate_failures(root: Path, session_id: str = None) -> dict:
 
         result["failure_types"] = dict(type_counter)
         result["failure_tools"] = dict(tool_counter)
-        result["recent_failures"] = recent[-20:]  # 只保留最近 20 条
+        result["recent_failures"] = recent[-20:]
+        result["total"] = len(recent)
 
     except OSError:
         pass
-
-    return result
 
 
 def classify_error_type(error: str) -> str:

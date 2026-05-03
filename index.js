@@ -20,10 +20,11 @@ const path = require('path');
 const fs = require('fs');
 
 const PLUGIN_ROOT = __dirname;
-const AGENTS_DIR = path.join(PLUGIN_ROOT, 'agents');
-const SKILLS_DIR = path.join(PLUGIN_ROOT, 'skills');
-const RULES_DIR = path.join(PLUGIN_ROOT, 'rules');
-const HOOKS_DIR = path.join(PLUGIN_ROOT, 'hooks');
+const HARNESS_DIR = path.join(PLUGIN_ROOT, 'harness');
+const AGENTS_DIR = path.join(HARNESS_DIR, 'agents');
+const SKILLS_DIR = path.join(HARNESS_DIR, 'skills');
+const RULES_DIR = path.join(HARNESS_DIR, 'rules');
+const HOOKS_DIR = path.join(HARNESS_DIR, 'hooks');
 
 // Load agents
 function loadAgents() {

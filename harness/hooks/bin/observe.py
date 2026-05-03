@@ -25,6 +25,11 @@ OBS_DIR = PLUGIN_ROOT / ".claude" / "homunculus"
 OBS_LOG = OBS_DIR / "observations.jsonl"
 ERROR_LOG = OBS_DIR / "observe_errors.log"
 
+# ── 日志轮转配置 ──────────────────────────────────────────────────────────────
+
+OBS_LOG_MAX_SIZE = 10 * 1024 * 1024  # 10MB
+OBS_LOG_MAX_FILES = 5                  # 保留 5 个轮转文件
+
 # ── 反馈关键词（多语言）────────────────────────────────────────────────────────
 
 CORRECTION_KEYWORDS = {
@@ -67,6 +72,49 @@ def _write_log(path: Path, line: str) -> None:
         _mkdir_for(path)
         with open(path, "a", encoding="utf-8") as f:
             f.write(line + "\n")
+    except Exception:
+        pass
+
+
+def rotate_log_if_needed() -> None:
+    """检查并执行日志轮转（按大小）"""
+    try:
+        _mkdir_for(OBS_LOG)
+        if not OBS_LOG.exists():
+            return
+        if OBS_LOG.stat().st_size < OBS_LOG_MAX_SIZE:
+            return
+
+        # 1. 关闭所有可能的打开句柄（gc 前触发）
+        import gc
+        gc.collect()
+
+        # 2. 已有 .N 文件递增加 1
+        def next_path(base: Path, n: int) -> Path:
+            return base.parent / f"{base.name}.{n}"
+
+        n = OBS_LOG_MAX_FILES
+        while n >= 1:
+            src = next_path(OBS_LOG, n)
+            dst = next_path(OBS_LOG, n + 1)
+            if src.exists():
+                if n == OBS_LOG_MAX_FILES:
+                    try:
+                        src.unlink()
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        src.rename(dst)
+                    except Exception:
+                        pass
+            n -= 1
+
+        # 3. 当前日志重命名为 .1
+        try:
+            OBS_LOG.rename(next_path(OBS_LOG, 1))
+        except Exception:
+            pass
     except Exception:
         pass
 
@@ -364,6 +412,8 @@ def main() -> int:
         _mkdir_for(OBS_LOG)
         with open(OBS_LOG, "a", encoding="utf-8") as f:
             f.write(json.dumps(obs, ensure_ascii=False) + "\n")
+        # 8. 写入后检查是否需要轮转
+        rotate_log_if_needed()
     except Exception as e:
         _write_log(ERROR_LOG, f"[{_ts()}] WRITE_ERROR: {e}")
 

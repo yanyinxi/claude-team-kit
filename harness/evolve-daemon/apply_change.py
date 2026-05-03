@@ -116,7 +116,7 @@ def apply_text_change(content: str, change: str) -> str:
 
     # 正则替换
     if change.startswith("regex:"):
-        match = re.match(r"regex:(.+) -> (.+)", change[6:])
+        match = re.match(r"(.+?) -> (.+)", change[6:].lstrip())
         if match:
             pattern, replacement = match.groups()
             try:

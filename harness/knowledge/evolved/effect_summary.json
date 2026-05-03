@@ -1,0 +1,45 @@
+{
+  "knowledge_stats": {
+    "9aa01460": {
+      "apply_count": 1,
+      "success_count": 1,
+      "failure_count": 0,
+      "partial_count": 0,
+      "success_rate": 1.0,
+      "status": "testing"
+    },
+    "446e83f9": {
+      "apply_count": 1,
+      "success_count": 1,
+      "failure_count": 0,
+      "partial_count": 0,
+      "success_rate": 1.0,
+      "status": "testing"
+    },
+    "5fa14ad3": {
+      "apply_count": 1,
+      "success_count": 0,
+      "failure_count": 0,
+      "partial_count": 1,
+      "success_rate": 0.0,
+      "status": "testing"
+    },
+    "fa6e54e7": {
+      "apply_count": 1,
+      "success_count": 1,
+      "failure_count": 0,
+      "partial_count": 0,
+      "success_rate": 1.0,
+      "status": "testing"
+    },
+    "df22bb5e": {
+      "apply_count": 1,
+      "success_count": 0,
+      "failure_count": 0,
+      "partial_count": 1,
+      "success_rate": 0.0,
+      "status": "testing"
+    }
+  },
+  "updated": "2026-05-03T11:31:25.680383"
+}

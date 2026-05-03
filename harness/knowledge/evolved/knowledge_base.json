@@ -1,0 +1,325 @@
+{
+  "version": "1.0",
+  "created": "2026-05-03T11:31:25.666505",
+  "rules": [
+    {
+      "id": "9aa01460",
+      "type": "pre_check",
+      "target": "rule",
+      "description": "执行前检查权限"
+    },
+    {
+      "id": "446e83f9",
+      "type": "pre_check",
+      "target": "skill",
+      "description": "执行前检查资源存在"
+    },
+    {
+      "id": "5fa14ad3",
+      "type": "config_adjust",
+      "target": "skill",
+      "description": "增加超时配置"
+    },
+    {
+      "id": "fa6e54e7",
+      "type": "post_check",
+      "target": "agent",
+      "description": "语法检查"
+    },
+    {
+      "id": "df22bb5e",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "c4d22532",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "0bc015be",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "db95164e",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "6f9b1349",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "1ade1183",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "8107470d",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "f84d1236",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "70aba153",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "b326b50b",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "b3d1ca09",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "38c45a5c",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "1dd41fe7",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "ccebb15c",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "56f90881",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "a02aceb6",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "fb5905c0",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "dd7ea2ea",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "8fd77654",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "821ee0f6",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "8332b6c4",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "e1163214",
+      "type": "general",
+      "target": "agent",
+      "description": "通用规则"
+    },
+    {
+      "id": "2f6d3a04",
+      "type": "general",
+      "target": "agent",
+      "description": "通用规则"
+    },
+    {
+      "id": "481db5cb",
+      "type": "general",
+      "target": "agent",
+      "description": "通用规则"
+    },
+    {
+      "id": "e177cb51",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "6361f32a",
+      "type": "pre_check",
+      "target": "agent",
+      "description": "执行前检查资源存在"
+    },
+    {
+      "id": "c762e443",
+      "type": "post_check",
+      "target": "skill",
+      "description": "语法检查"
+    },
+    {
+      "id": "840a91b8",
+      "type": "pre_check",
+      "target": "skill",
+      "description": "执行前检查资源存在"
+    },
+    {
+      "id": "7f62e14b",
+      "type": "config_adjust",
+      "target": "skill",
+      "description": "增加超时配置"
+    },
+    {
+      "id": "f027c7cc",
+      "type": "general",
+      "target": "skill",
+      "description": "通用规则"
+    },
+    {
+      "id": "e4e413da",
+      "type": "pre_check",
+      "target": "skill",
+      "description": "执行前检查资源存在"
+    },
+    {
+      "id": "1f84f360",
+      "type": "pre_check",
+      "target": "rule",
+      "description": "执行前检查权限"
+    },
+    {
+      "id": "5b652c2e",
+      "type": "general",
+      "target": "rule",
+      "description": "通用规则"
+    },
+    {
+      "id": "9adc8895",
+      "type": "general",
+      "target": "rule",
+      "description": "通用规则"
+    },
+    {
+      "id": "2c15b066",
+      "type": "post_check",
+      "target": "skill",
+      "description": "语法检查"
+    },
+    {
+      "id": "b564036b",
+      "type": "post_check",
+      "target": "rule",
+      "description": "语法检查"
+    },
+    {
+      "id": "b9e26d83",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "e518998a",
+      "type": "pre_check",
+      "target": "instinct",
+      "description": "执行前检查资源存在"
+    },
+    {
+      "id": "caaa9499",
+      "type": "pre_check",
+      "target": "instinct",
+      "description": "执行前检查资源存在"
+    },
+    {
+      "id": "a6772bed",
+      "type": "general",
+      "target": "instinct",
+      "description": "通用规则"
+    },
+    {
+      "id": "fe65100d",
+      "type": "general",
+      "target": "agent",
+      "description": "通用规则"
+    }
+  ],
+  "patterns": [
+    "permission_denied",
+    "resource_not_found",
+    "operation_timeout",
+    "syntax_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "unknown_error",
+    "architecture_over_complex",
+    "incomplete_implementation",
+    "architecture_performance_mismatch",
+    "unknown_error",
+    "database_selection_error",
+    "tdd_skill_missing",
+    "template_mismatch",
+    "debug_multiprocess",
+    "migration_no_rollback",
+    "performance_skill_incomplete",
+    "security_rule_missing",
+    "rule_false_positive",
+    "quality_gate_too_strict",
+    "tdd_skill_missing",
+    "naming_rule_inflexible",
+    "unknown_error",
+    "instinct_false_positive",
+    "low_confidence_decision",
+    "multi_pattern_conflict",
+    "incomplete_implementation"
+  ],
+  "solutions": [],
+  "verified_effects": []
+}

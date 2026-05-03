@@ -8,7 +8,9 @@
   python3 daemon.py start          # 启动内置调度器（内部定时触发）
   python3 daemon.py stop           # 停止内置调度器
   python3 daemon.py status         # 查看系统状态
-  python3 daemon.py install-launchd  # macOS: 安装 LaunchAgent（外部触发）
+  python3 daemon.py rollback-check # 检查回滚状态（观察期到期检查）
+  python3 daemon.py install-launchd # macOS: 安装 LaunchAgent（外部触发）
+  python3 daemon.py health         # 健康检查
 
 触发条件（满足任一即触发）:
   - 累计 >= 5 个新会话未分析
@@ -20,16 +22,308 @@
     mode: internal           # external/internal/both
     scheduler_interval: 30 minutes
     run_on_startup: true
+
+回滚机制:
+  - apply_change.py 记录 applied 状态的提案到 proposal_history.json
+  - rollback.py 检查观察期（observation_days），到期后评估指标并回滚/固化
+  - daemon.py 的 run/rollback-check 命令自动触发回滚检查
+  - 调度器每次心跳检测都会自动调用回滚检查
+  - 回滚事件会记录到 instinct-record.json
 """
 import json
+import logging
 import os
+import signal
 import sys
+import time
 try:
     import yaml
 except ImportError:
     yaml = None
 from pathlib import Path
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
+
+
+def handle_exception(e, context, reraise=False, default_return=None, log_level="error"):
+    """统一异常处理包装函数（本地定义避免循环依赖）"""
+    error_msg = f"{context}: {type(e).__name__}: {e}"
+    log_func = getattr(logger, log_level.lower(), logger.error)
+    log_func(error_msg)
+    if reraise:
+        raise
+    return default_return
+
+
+# 信号处理标记
+_shutdown_requested = False
+_graceful_restart_requested = False
+_open_files = []
+_pid_file = None
+
+def graceful_shutdown(signum, frame):
+    """优雅退出处理函数"""
+    global _shutdown_requested
+    signame = signal.Signals(signum).name
+    print(f"\n[{datetime.now().isoformat()}] 收到 {signame} 信号，正在优雅关闭...")
+    _shutdown_requested = True
+
+    # 停止调度器（如果正在运行）
+    try:
+        from scheduler import _manager
+        if _manager.is_running():
+            print("正在停止调度器...")
+            _manager.stop()
+            print("调度器已停止")
+    except Exception as e:
+        print(f"停止调度器失败: {e}")
+
+    # 关闭打开的文件
+    for f in _open_files:
+        try:
+            if f and not f.closed:
+                f.close()
+        except OSError:
+            pass  # 文件已关闭或不存在
+        except Exception:
+            pass  # 其他错误忽略
+
+    # 保存状态（确保分析状态不丢失）
+    try:
+        root = find_root()
+        config = load_config()
+        data_dir = root / config["paths"]["data_dir"]
+        state_file = data_dir / "analysis_state.json"
+        if state_file.exists():
+            # 更新时间戳表明最后一次检查
+            try:
+                state = json.loads(state_file.read_text())
+                state["last_shutdown_time"] = datetime.now().isoformat()
+                state["shutdown_signal"] = signame
+                state_file.write_text(json.dumps(state, indent=2))
+                print(f"状态已保存: {state_file}")
+            except (json.JSONDecodeError, OSError) as e:
+                handle_exception(e, f"解析/写入分析状态失败", log_level="warning")
+    except Exception as e:
+        handle_exception(e, "保存关闭状态失败", log_level="warning")
+        print(f"保存状态失败: {e}")
+
+    print("[退出] 优雅关闭完成")
+    sys.exit(0)
+
+def graceful_restart(signum, frame):
+    """优雅重启处理函数（SIGUSR1）"""
+    global _graceful_restart_requested
+    signame = signal.Signals(signum).name
+    print(f"\n[{datetime.now().isoformat()}] 收到 {signame} 信号，正在优雅重启...")
+
+    # 标记需要重启
+    _graceful_restart_requested = True
+
+    # 停止调度器（如果正在运行）
+    try:
+        from scheduler import _manager
+        if _manager.is_running():
+            print("正在停止调度器...")
+            _manager.stop()
+            print("调度器已停止")
+    except Exception as e:
+        print(f"停止调度器失败: {e}")
+
+    # 保存当前状态
+    try:
+        root = find_root()
+        config = load_config()
+        data_dir = root / config["paths"]["data_dir"]
+        state_file = data_dir / "analysis_state.json"
+        if state_file.exists():
+            try:
+                state = json.loads(state_file.read_text())
+                state["last_restart_time"] = datetime.now().isoformat()
+                state["restart_signal"] = signame
+                state_file.write_text(json.dumps(state, indent=2))
+                print(f"状态已保存: {state_file}")
+            except (json.JSONDecodeError, OSError):
+                pass
+    except Exception as e:
+        print(f"保存状态失败: {e}")
+
+    print("[重启] 优雅重启完成，准备重新启动调度器")
+    sys.exit(0)  # 外部可以用启动脚本重新启动
+
+
+# 注册信号处理器
+signal.signal(signal.SIGTERM, graceful_shutdown)
+signal.signal(signal.SIGHUP, graceful_shutdown)
+signal.signal(signal.SIGUSR1, graceful_restart)  # 优雅重启信号
+
+
+def _health_check() -> dict:
+    """
+    健康检查方法 - 检查进程状态和关键文件
+
+    返回:
+        dict: 健康状态 {"healthy": bool, "checks": [...], "message": str}
+    """
+    checks = []
+    is_healthy = True
+    root = None
+    config = None
+
+    try:
+        root = find_root()
+        config = load_config()
+    except Exception as e:
+        checks.append({
+            "name": "config_load",
+            "status": "error",
+            "message": f"配置加载失败: {e}"
+        })
+        is_healthy = False
+        return {"healthy": is_healthy, "checks": checks, "message": "配置加载失败"}
+
+    # 检查 1: 配置文件存在性
+    config_path = Path(__file__).parent / "config.yaml"
+    if config_path.exists():
+        checks.append({"name": "config_exists", "status": "ok", "message": "配置文件存在"})
+    else:
+        checks.append({"name": "config_exists", "status": "error", "message": "配置文件不存在"})
+        is_healthy = False
+
+    # 检查 2: 数据目录存在性
+    data_dir = root / config["paths"]["data_dir"]
+    if data_dir.exists():
+        checks.append({"name": "data_dir_exists", "status": "ok", "message": f"数据目录存在: {data_dir}"})
+    else:
+        checks.append({"name": "data_dir_exists", "status": "warning", "message": f"数据目录不存在，将自动创建: {data_dir}"})
+
+    # 检查 3: sessions.jsonl 可读性
+    sessions_file = data_dir / "sessions.jsonl"
+    if sessions_file.exists():
+        try:
+            with open(sessions_file, 'r', encoding='utf-8') as f:
+                f.read(100)  # 尝试读取前100字符
+            checks.append({"name": "sessions_readable", "status": "ok", "message": "sessions.jsonl 可读"})
+        except Exception as e:
+            checks.append({"name": "sessions_readable", "status": "error", "message": f"sessions.jsonl 读取失败: {e}"})
+            is_healthy = False
+    else:
+        checks.append({"name": "sessions_readable", "status": "warning", "message": "sessions.jsonl 不存在（首次运行）"})
+
+    # 检查 4: 调度器状态
+    try:
+        from scheduler import _manager
+        if _manager.is_running():
+            checks.append({"name": "scheduler_running", "status": "ok", "message": "调度器运行中"})
+        else:
+            checks.append({"name": "scheduler_running", "status": "warning", "message": "调度器未运行"})
+    except Exception as e:
+        checks.append({"name": "scheduler_running", "status": "warning", "message": f"无法检查调度器: {e}"})
+
+    # 检查 5: 分析状态文件
+    state_file = data_dir / "analysis_state.json"
+    if state_file.exists():
+        try:
+            state = json.loads(state_file.read_text())
+            last_analyze = state.get("last_analyze_time")
+            if last_analyze:
+                last_time = datetime.fromisoformat(last_analyze)
+                hours_since = (datetime.now() - last_time).total_seconds() / 3600
+                checks.append({
+                    "name": "last_analysis",
+                    "status": "ok",
+                    "message": f"上次分析: {hours_since:.1f} 小时前"
+                })
+            else:
+                checks.append({"name": "last_analysis", "status": "warning", "message": "无上次分析记录"})
+        except Exception as e:
+            checks.append({"name": "last_analysis", "status": "warning", "message": f"无法读取分析状态: {e}"})
+    else:
+        checks.append({"name": "last_analysis", "status": "warning", "message": "无分析状态文件（首次运行）"})
+
+    # 检查 6: 路径验证（使用 paths.py 的验证函数）
+    try:
+        from paths import validate_paths as paths_validate
+        path_result = paths_validate(root)
+        if path_result.get("all_valid", False):
+            checks.append({"name": "paths_valid", "status": "ok", "message": "所有关键路径有效"})
+        else:
+            invalid = path_result.get("invalid_paths", [])
+            checks.append({"name": "paths_valid", "status": "error", "message": f"无效路径: {invalid}"})
+            is_healthy = False
+    except Exception as e:
+        checks.append({"name": "paths_valid", "status": "warning", "message": f"路径验证失败: {e}"})
+
+    # 检查 7: 备份目录存在性
+    backup_dir = root / ".claude/data/backups"
+    if backup_dir.exists():
+        backup_files = list(backup_dir.glob("config.yaml.*.bak"))
+        checks.append({
+            "name": "backup_dir",
+            "status": "ok",
+            "message": f"备份目录存在，{len(backup_files)} 个配置文件备份"
+        })
+    else:
+        checks.append({
+            "name": "backup_dir",
+            "status": "warning",
+            "message": "备份目录不存在（将在下次运行时创建）"
+        })
+
+    # 构建消息
+    if is_healthy:
+        message = "所有健康检查通过"
+    else:
+        failed = [c["name"] for c in checks if c["status"] == "error"]
+        message = f"健康检查失败: {', '.join(failed)}"
+
+    return {"healthy": is_healthy, "checks": checks, "message": message}
+
+
+def _backup_config(config_path: Path, backup_dir: Path, max_backups: int = 5) -> str | None:
+    """
+    备份配置文件
+
+    参数:
+        config_path: 配置文件路径
+        backup_dir: 备份目录
+        max_backups: 最大保留备份数
+
+    返回:
+        str: 备份文件路径，失败返回 None
+    """
+    if not config_path.exists():
+        return None
+
+    # 创建备份目录
+    backup_dir.mkdir(parents=True, exist_ok=True)
+
+    # 生成备份文件名
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_file = backup_dir / f"config.yaml.{timestamp}.bak"
+
+    try:
+        import shutil
+        shutil.copy2(config_path, backup_file)
+        print(f"[备份] 配置文件已备份: {backup_file}")
+
+        # 清理旧备份，保留最近 max_backups 个
+        existing_backups = sorted(
+            backup_dir.glob("config.yaml.*.bak"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True
+        )
+
+        if len(existing_backups) > max_backups:
+            for old_backup in existing_backups[max_backups:]:
+                old_backup.unlink()
+                print(f"[备份] 已删除旧备份: {old_backup}")
+
+        return str(backup_file)
+    except Exception as e:
+        print(f"[备份] 配置文件备份失败: {e}")
+        return None
 
 
 def load_config():
@@ -240,6 +534,76 @@ def _apply_file_change(target_file: str, suggested_change: str, config: dict, ro
             pass
 
 
+def _record_rollback_to_instinct(proposal: dict, root: Path, reason: str, config: dict):
+    """
+    将回滚事件记录到 instinct-record.json。
+
+    回滚被视为"负向验证"，降低关联本能的置信度。
+    """
+    try:
+        # 优先通过 linked_instinct_id 关联
+        linked_id = proposal.get("linked_instinct_id")
+        target_file = proposal.get("target_file", "")
+        dimension = proposal.get("dimension", "unknown")
+
+        # 构建回滚 pattern 描述
+        pattern = f"[回滚] {dimension}:{target_file}"
+        correction = reason[:200] if reason else proposal.get("suggested_change", "观察期指标恶化")
+        root_cause = reason
+
+        if linked_id:
+            # 直接关联到已有 instinct 记录并降低置信度
+            from instinct_updater import demote_confidence, link_instinct_to_target
+            demote_confidence(linked_id, delta=0.2, root=root)
+            link_instinct_to_target(linked_id, target_file, root=root)
+        else:
+            # 创建新的回滚记录
+            from instinct_updater import add_pattern
+            record_id = add_pattern(
+                pattern=pattern,
+                correction=correction,
+                root_cause=root_cause,
+                confidence=0.2,  # 回滚记录的初始置信度较低
+                source="rollback-event",
+            )
+    except Exception:
+        pass  # instinct 更新失败不影响回滚主流程
+
+
+def run_rollback_check(config: dict, root: Path) -> dict:
+    """
+    执行回滚检查：观察期到期的提案评估并回滚/固化。
+
+    返回检查结果。
+    """
+    rollback_config = config.get("rollback", {})
+    if not rollback_config.get("auto_enabled", True):
+        return {"status": "skipped", "reason": "rollback.auto_enabled=false"}
+
+    try:
+        from rollback import run_rollback_check as do_check
+
+        result = do_check(root, config)
+
+        # 如果有回滚发生，同步记录到 instinct
+        if result.get("rolled_back", 0) > 0:
+            history_file = root / config["paths"]["data_dir"] / "proposal_history.json"
+            if history_file.exists():
+                try:
+                    history = json.loads(history_file.read_text())
+                    for p in history[-result["rolled_back"]:]:
+                        if p.get("status") == "rolled_back":
+                            _record_rollback_to_instinct(p, root, p.get("rollback_reason", ""), config)
+                except (json.JSONDecodeError, OSError):
+                    pass
+
+        return result
+    except ImportError:
+        return {"status": "error", "reason": "rollback module not available"}
+    except Exception as e:
+        return {"status": "error", "reason": str(e)}
+
+
 def install_launchd(root: Path):
     """macOS: 生成 LaunchAgent plist 并安装"""
     plist = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -282,6 +646,13 @@ def main():
 
     cmd = sys.argv[1] if len(sys.argv) > 1 else "check"
 
+    # 健康检查命令
+    if cmd == "health":
+        result = _health_check()
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        # 根据健康状态返回退出码
+        sys.exit(0 if result.get("healthy", False) else 1)
+
     # 读取分析状态
     state_file = data_dir / "analysis_state.json"
     state = {}
@@ -311,12 +682,30 @@ def main():
         }, indent=2, ensure_ascii=False))
 
     elif cmd == "run":
+        # 外部触发模式 - 启动前自动备份配置
+        config_path = Path(__file__).parent / "config.yaml"
+        backup_dir = root / ".claude/data/backups"
+        _backup_config(config_path, backup_dir, max_backups=5)
+
         triggers = check_thresholds(sessions, config, last_analyze_time)
         if not triggers:
             print("无触发条件，跳过分析")
             return
         print(f"触发条件: {', '.join(triggers)}")
         run_analysis(config, root, sessions)
+
+        # 分析完成后自动执行回滚检查
+        print("\n--- 回滚状态检查 ---")
+        rb_result = run_rollback_check(config, root)
+        print(json.dumps(rb_result, indent=2, ensure_ascii=False))
+
+    elif cmd == "rollback-check":
+        # 独立运行回滚检查（不依赖触发条件）
+        print("执行回滚检查...")
+        result = run_rollback_check(config, root)
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        if result.get("status") == "paused":
+            print(f"⚠️ 系统暂停: {result.get('reason')}")
 
     elif cmd == "status":
         triggers = check_thresholds(sessions, config, last_analyze_time)
@@ -334,7 +723,11 @@ def main():
         install_launchd(root)
 
     elif cmd == "start":
-        # 内置调度器模式
+        # 内置调度器模式 - 启动前自动备份配置
+        config_path = Path(__file__).parent / "config.yaml"
+        backup_dir = root / ".claude/data/backups"
+        _backup_config(config_path, backup_dir, max_backups=5)
+
         from scheduler import _manager
         result = _manager.start()
         if result.get("success"):
@@ -343,14 +736,14 @@ def main():
             print(f"   间隔: {result.get('interval')} ({result.get('interval_seconds')}s)")
             if result.get("run_on_startup"):
                 print(f"   启动时立即运行: 是")
-            print("\n后台运行中，按 Ctrl+C 停止")
+            print("\n后台运行中，按 Ctrl+C 或发送 SIGTERM/SIGHUP 停止")
             try:
                 import time as time_module
                 while True:
                     time_module.sleep(60)
             except KeyboardInterrupt:
                 print("\n正在停止调度器...")
-                _manager.stop()
+                _manager.shutdown(wait=True)
                 print("已停止")
         else:
             print(f"启动失败: {result.get('error')}")
@@ -368,19 +761,24 @@ def main():
 
     else:
         print(f"未知命令: {cmd}")
-        print("用法: python3 daemon.py [check|run|start|stop|status|install-launchd]")
+        print("用法: python3 daemon.py [check|run|start|stop|status|rollback-check|install-launchd|health]")
         print("")
         print("命令说明：")
-        print("  check           - 仅检查触发条件")
-        print("  run             - 检查并执行分析（外部触发模式）")
-        print("  start           - 启动内置调度器（内部定时触发）")
-        print("  stop            - 停止内置调度器")
-        print("  status          - 查看系统状态")
-        print("  install-launchd - macOS: 安装 LaunchAgent")
+        print("  check            - 仅检查触发条件")
+        print("  run              - 检查并执行分析 + 回滚检查（外部触发模式）")
+        print("  rollback-check   - 仅检查观察期到期的提案并执行回滚/固化")
+        print("  start            - 启动内置调度器（内部定时触发）")
+        print("  stop             - 停止内置调度器")
+        print("  status           - 查看系统状态")
+        print("  install-launchd  - macOS: 安装 LaunchAgent")
+        print("  health           - 健康检查")
         print("")
         print("示例：")
         print("  python3 daemon.py check           # 检查触发条件")
-        print("  python3 daemon.py start          # 启动内置调度器")
+        print("  python3 daemon.py run             # 分析 + 回滚检查")
+        print("  python3 daemon.py rollback-check  # 仅回滚检查")
+        print("  python3 daemon.py start           # 启动内置调度器")
+        print("  python3 daemon.py health          # 健康检查")
 
 
 if __name__ == "__main__":

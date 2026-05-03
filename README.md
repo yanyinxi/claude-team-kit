@@ -11,7 +11,7 @@ Verify, then ship.
 Evolve, don't just learn.
 ```
 
-[![Version](https://img.shields.io/badge/CHK-v2.0-blue?style=flat-square)](#)
+[![Version](https://img.shields.io/badge/CHK-v0.6.1-blue?style=flat-square)](#)
 [![Platform](https://img.shields.io/badge/Platform-Claude%20Code%20CLI-green?style=flat-square)](#)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square)](LICENSE)
 
@@ -108,7 +108,7 @@ Evolve, don't just learn.
 ├── 5 个 Hook 事件（上下文注入、安全拦截、质量门禁...）
 └── 进化闭环（犯错 → 学习 → 固化，不再犯第二次）
 
-这就是 CHK v2.0
+这就是 CHK 0.6.1
 ```
 
 ---

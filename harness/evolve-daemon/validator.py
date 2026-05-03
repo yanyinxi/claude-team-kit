@@ -9,10 +9,15 @@
 4. 统计数据质量
 """
 import json
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+from harness._core.exceptions import handle_exception, safe_execute
+
+logger = logging.getLogger(__name__)
 
 
 def find_root() -> Path:
@@ -196,8 +201,8 @@ def clean_old_sessions(sessions_file: Path, max_age_days: int = 90) -> dict:
 
         sessions_file.write_text("\n".join(kept_lines) + "\n")
 
-    except Exception:
-        pass
+    except OSError as e:
+        handle_exception(e, f"清理旧会话失败: {sessions_file}", default_return={"cleaned": 0, "kept": 0}, log_level="warning")
 
     return {"cleaned": cleaned, "kept": len(kept_lines)}
 
@@ -263,8 +268,8 @@ def get_data_quality_stats(sessions_file: Path) -> dict:
         stats["failures_rate"] = round(stats["sessions_with_failures"] / total, 2)
         stats["corrections_rate"] = round(stats["sessions_with_corrections"] / total, 2)
 
-    except Exception:
-        pass
+    except OSError as e:
+        handle_exception(e, f"统计数据质量失败: {sessions_file}", default_return=stats, log_level="warning")
 
     return stats
 

@@ -25,11 +25,19 @@ def extract_with_haiku(session: dict) -> list[dict]:
     """
     调用 Claude Haiku 提取纠正上下文。
 
-    Returns: corrections[] 或空列表（失败时）
+    有 API Key：调用真实 API
+    无 API Key：抛出明确错误
     """
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        return []
+        raise EnvironmentError(
+            "ANTHROPIC_API_KEY 未设置，无法提取语义信息。\n"
+            "请先配置 API Key：\n"
+            "  1. 复制 .env.example 为 .env\n"
+            "  2. 填入 ANTHROPIC_API_KEY=your_key\n"
+            "  3. 或在终端执行: export ANTHROPIC_API_KEY=your_key\n"
+            "获取 API Key: https://console.anthropic.com/settings/keys"
+        )
 
     system_prompt = """你是一个对话分析器。从会话摘要中提取用户纠正 AI 的上下文。
 
@@ -130,15 +138,10 @@ def analyze_session(session: dict, root: Path | None = None) -> dict:
         }
 
     # 调用 Haiku 提取
-    corrections = extract_with_haiku(session)
-    if not corrections:
-        return {
-            "success": False,
-            "session_id": session_id,
-            "corrections_count": 0,
-            "corrections": [],
-            "error": "No corrections extracted (Haiku API unavailable or no data)",
-        }
+    try:
+        corrections = extract_with_haiku(session)
+    except EnvironmentError as e:
+        raise EnvironmentError(str(e))
 
     # 回填 sessions.jsonl
     try:

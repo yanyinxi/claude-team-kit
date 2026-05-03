@@ -13,6 +13,11 @@
             "type": "command",
             "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/auto-start-evolve.py",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/bin/checkpoint-verify.sh",
+            "timeout": 3
           }
         ]
       }
@@ -20,11 +25,28 @@
     "PreToolUse": [
       {
         "matcher": "Bash",
-        "hooks": [{
-          "type": "command",
-          "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/bin/safety-check.sh",
-          "timeout": 5
-        }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/bin/safety-check.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/bin/git-commit-check.sh",
+            "timeout": 3
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/bin/architecture-verify.sh",
+            "timeout": 3
+          }
+        ]
       },
       {
         "matcher": "Write|Edit",
@@ -100,6 +122,16 @@
           "type": "command",
           "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect_error.py",
           "timeout": 5
+        }]
+      }
+    ],
+    "PostToolUseSuccess": [
+      {
+        "matcher": "*",
+        "hooks": [{
+          "type": "command",
+          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect_success.py",
+          "timeout": 3
         }]
       }
     ],

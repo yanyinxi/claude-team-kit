@@ -8,6 +8,8 @@
   python3 -m evolve_daemon.scheduler status  # 查看状态
 """
 import argparse
+import json
+import logging
 import os
 import signal
 import sys
@@ -15,6 +17,10 @@ import time
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
+
+from harness._core.exceptions import handle_exception, safe_execute
+
+logger = logging.getLogger(__name__)
 
 # APScheduler 可能是可选依赖
 try:
@@ -36,17 +42,23 @@ def load_config():
         import yaml
         with open(config_path, encoding="utf-8") as f:
             return yaml.safe_load(f)
-    except Exception:
-        # Fallback 默认配置
-        return {
-            "daemon": {
-                "mode": "external",
-                "scheduler_interval": "30 minutes",
-                "run_on_startup": False,
-                "heartbeat_check_minutes": 180,  # 3 小时
-                "auto_start_on_install": True,
-            }
+    except ImportError as e:
+        handle_exception(e, "PyYAML 未安装，使用默认配置", log_level="info")
+    except OSError as e:
+        handle_exception(e, f"加载配置文件失败: {config_path}", log_level="warning")
+    except Exception as e:
+        handle_exception(e, "加载配置未知错误，使用默认配置", log_level="warning")
+
+    # Fallback 默认配置
+    return {
+        "daemon": {
+            "mode": "external",
+            "scheduler_interval": "30 minutes",
+            "run_on_startup": False,
+            "heartbeat_check_minutes": 180,  # 3 小时
+            "auto_start_on_install": True,
         }
+    }
 
 
 def parse_interval(interval_str: str) -> int:
@@ -138,8 +150,10 @@ def get_last_evolution_time(data_dir: Path) -> datetime | None:
         last_time = state.get("last_analyze_time")
         if last_time:
             return datetime.fromisoformat(last_time)
-    except Exception:
-        pass
+    except (json.JSONDecodeError, ValueError) as e:
+        handle_exception(e, f"解析分析状态文件失败: {state_file}", log_level="warning")
+    except OSError as e:
+        handle_exception(e, f"读取分析状态文件失败: {state_file}", log_level="warning")
     return None
 
 
@@ -208,6 +222,8 @@ class SchedulerManager:
             self._scheduler = None
             self._config = None
             self._running = False
+            self._start_time = None
+            self._open_files = []
             self._initialized = True
 
     def load_config(self):
@@ -322,22 +338,121 @@ class SchedulerManager:
             print(f"[{datetime.now().isoformat()}] 心跳检测: {result['reason']}")
             print("    触发紧急进化...")
             run_evolution_cycle()
+        else:
+            # 心跳正常时也定期检查回滚状态（每 6 次心跳约 1 小时）
+            self._heartbeat_count = getattr(self, "_heartbeat_count", 0) + 1
+            if self._heartbeat_count % 6 == 0:
+                print(f"[{datetime.now().isoformat()}] 定期回滚状态检查...")
+                self._rollback_check()
 
     def _scheduled_evolution(self):
         """定时进化任务"""
         print(f"[{datetime.now().isoformat()}] 执行定时进化...")
         run_evolution_cycle()
 
+        # 进化完成后执行回滚检查
+        self._rollback_check()
+
+    def _rollback_check(self):
+        """定期回滚检查"""
+        try:
+            import json
+            root = get_project_root()
+            daemon_path = root / "evolve-daemon" / "daemon.py"
+
+            result = subprocess.run(
+                [sys.executable, str(daemon_path), "rollback-check"],
+                capture_output=True,
+                text=True,
+                timeout=120,
+                cwd=str(root),
+                env={**os.environ, "CLAUDE_PROJECT_DIR": str(root)},
+            )
+
+            if result.returncode == 0 and result.stdout.strip():
+                for line in result.stdout.strip().split("\n"):
+                    if "rolled_back" in line or "consolidated" in line or "paused" in line:
+                        print(f"    {line}")
+        except subprocess.TimeoutExpired as e:
+            handle_exception(e, "回滚检查超时", log_level="warning")
+        except OSError as e:
+            handle_exception(e, "回滚检查执行失败（IO错误）", log_level="warning")
+        except Exception as e:
+            handle_exception(e, "回滚检查异常", log_level="warning")
+
     def stop(self) -> dict:
         """停止调度器"""
+        return self.shutdown(wait=False)
+
+    def shutdown(self, wait: bool = True) -> dict:
+        """
+        完整关闭调度器（含状态保存）
+
+        Args:
+            wait: 是否等待任务完成
+        """
         if not self.is_running():
             return {"success": False, "error": "Scheduler not running"}
 
-        self._scheduler.shutdown(wait=False)
+        print(f"[{datetime.now().isoformat()}] 开始优雅关闭调度器...")
+
+        # 关闭打开的文件
+        for f in self._open_files:
+            try:
+                if f and not f.closed:
+                    f.close()
+            except OSError as e:
+                handle_exception(e, f"关闭文件失败", log_level="warning")
+            except Exception as e:
+                handle_exception(e, f"关闭文件未知错误", log_level="warning")
+        self._open_files.clear()
+
+        # 保存运行统计
+        try:
+            self._save_status()
+        except OSError as e:
+            handle_exception(e, "保存调度器状态失败（IO错误）", log_level="warning")
+        except Exception as e:
+            handle_exception(e, "保存调度器状态失败", log_level="warning")
+            print(f"保存状态失败: {e}")
+
+        # 停止调度器
+        self._scheduler.shutdown(wait=wait)
         self._running = False
         self._scheduler = None
 
-        return {"success": True}
+        uptime = None
+        if self._start_time:
+            uptime = (datetime.now() - self._start_time).total_seconds()
+
+        print(f"[退出] 调度器已关闭，运行时间: {uptime:.0f}s" if uptime else "[退出] 调度器已关闭")
+        return {"success": True, "uptime_seconds": uptime}
+
+    def _save_status(self):
+        """保存调度器状态"""
+        try:
+            data_dir = self.get_data_dir()
+            status_file = data_dir / "scheduler_status.json"
+            status = {
+                "last_shutdown": datetime.now().isoformat(),
+                "start_time": self._start_time.isoformat() if self._start_time else None,
+                "running": self._running,
+            }
+            status_file.write_text(json.dumps(status, indent=2), encoding="utf-8")
+        except OSError as e:
+            handle_exception(e, "保存调度器状态失败（IO错误）", log_level="warning")
+        except Exception as e:
+            handle_exception(e, "保存调度器状态失败", log_level="warning")
+
+    def add_open_file(self, f):
+        """注册需要关闭的文件对象"""
+        if f and f not in self._open_files:
+            self._open_files.append(f)
+
+    def remove_open_file(self, f):
+        """移除文件对象"""
+        if f in self._open_files:
+            self._open_files.remove(f)
 
     def status(self) -> dict:
         """获取调度器状态"""
@@ -454,13 +569,26 @@ def main():
                 print(f"   启动时立即运行: 是")
 
             if args.daemon:
-                print("\n[后台运行中，按 Ctrl+C 停止]")
+                print("\n[后台运行中，按 Ctrl+C 或发送 SIGTERM/SIGHUP 停止]")
+
+                # 信号处理函数
+                def daemon_shutdown(signum, frame):
+                    signame = signal.Signals(signum).name
+                    print(f"\n[{datetime.now().isoformat()}] 收到 {signame} 信号，正在优雅关闭...")
+                    _manager.shutdown(wait=True)
+                    print("[退出] 优雅关闭完成")
+                    sys.exit(0)
+
+                # 注册信号处理器
+                signal.signal(signal.SIGTERM, daemon_shutdown)
+                signal.signal(signal.SIGHUP, daemon_shutdown)
+
                 try:
                     while True:
                         time.sleep(60)
                 except KeyboardInterrupt:
                     print("\n正在停止调度器...")
-                    _manager.stop()
+                    _manager.shutdown(wait=True)
                     print("已停止")
         else:
             print(f"启动失败: {result.get('error')}")

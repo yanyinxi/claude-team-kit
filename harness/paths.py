@@ -119,6 +119,109 @@ HOOK_SCRIPTS = {
     "error_writer.py": HOOKS_BIN_DIR / "error_writer.py",
 }
 
+
+def validate_paths(project_root: Path | None = None) -> dict:
+    """
+    验证关键路径是否存在，启动时检查关键路径。
+
+    参数:
+        project_root: 项目根目录，默认为 ROOT
+
+    返回:
+        dict: {
+            "all_valid": bool,           # 所有关键路径是否有效
+            "missing_paths": list,       # 缺失的路径列表
+            "existing_paths": list,      # 存在的路径列表
+            "warnings": list,            # 警告信息
+            "invalid_paths": list,       # 无效路径（缺失或非目录）
+        }
+    """
+    from typing import Any
+
+    root = project_root if project_root else ROOT
+
+    # 定义关键路径及其用途说明
+    critical_paths = {
+        "data_dir": (DATA_DIR, "数据文件目录"),
+        "skills_dir": (SKILLS_DIR, "Skill 定义目录"),
+        "agents_dir": (AGENTS_DIR, "Agent 定义目录"),
+        "rules_dir": (RULES_DIR, "规则文件目录"),
+        "hooks_dir": (HOOKS_DIR, "Hook 脚本目录"),
+        "tests_dir": (TESTS_DIR, "测试目录"),
+        "evolve_dir": (EVOLVE_DIR, "进化守护进程目录"),
+    }
+
+    result: dict[str, Any] = {
+        "all_valid": True,
+        "missing_paths": [],
+        "existing_paths": [],
+        "warnings": [],
+        "invalid_paths": [],
+    }
+
+    for name, (path, description) in critical_paths.items():
+        # 转换相对路径为绝对路径（如果需要）
+        if not path.is_absolute():
+            abs_path = root / path
+        else:
+            abs_path = path
+
+        if abs_path.exists():
+            result["existing_paths"].append({
+                "name": name,
+                "path": str(abs_path),
+                "description": description,
+            })
+            # 检查是否为目录
+            if not abs_path.is_dir():
+                result["warnings"].append(f"{name} ({abs_path}) 存在但不是目录")
+                result["invalid_paths"].append({"name": name, "path": str(abs_path)})
+                result["all_valid"] = False
+        else:
+            result["missing_paths"].append({
+                "name": name,
+                "path": str(abs_path),
+                "description": description,
+            })
+            result["warnings"].append(f"缺失关键路径: {name} ({abs_path}) - {description}")
+            result["invalid_paths"].append({"name": name, "path": str(abs_path)})
+            result["all_valid"] = False
+
+    # 检查数据文件是否存在
+    data_dir_abs = root / DATA_DIR if not DATA_DIR.is_absolute() else DATA_DIR
+    if data_dir_abs.exists():
+        key_files = {
+            "sessions": "sessions.jsonl",
+            "errors": "error.jsonl",
+            "failures": "failures.jsonl",
+        }
+        for key, filename in key_files.items():
+            file_path = data_dir_abs / filename
+            if file_path.exists():
+                result["existing_paths"].append({
+                    "name": f"data_file_{key}",
+                    "path": str(file_path),
+                    "description": f"数据文件: {filename}",
+                })
+            else:
+                result["warnings"].append(f"建议创建数据文件: {filename}")
+
+    return result
+
+
+def warn_missing_paths(project_root: Path | None = None) -> list[str]:
+    """
+    检查并返回缺失的关键路径警告信息。
+
+    参数:
+        project_root: 项目根目录
+
+    返回:
+        list: 警告信息列表
+    """
+    validation = validate_paths(project_root)
+    return validation.get("warnings", [])
+
 __all__ = [
     "DIR_CLAUDE", "DIR_DATA", "DIR_PROPOSALS", "DIR_HOOKS", "DIR_HOOKS_BIN",
     "DIR_SKILLS", "DIR_AGENTS", "DIR_RULES", "DIR_MEMORY", "DIR_KNOWLEDGE",
@@ -142,4 +245,5 @@ __all__ = [
     "agent_calls_file", "skill_calls_file", "analysis_state_file",
     "proposal_history_file", "observations_file", "obs_errors_file",
     "HOOK_SCRIPTS",
+    "validate_paths", "warn_missing_paths",
 ]

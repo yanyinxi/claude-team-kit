@@ -113,16 +113,91 @@ def check_base64_decoded(text: str) -> list:
     for m in re.finditer(r'[A-Za-z0-9+/]{40,}={0,2}', text):
         try:
             decoded = base64.b64decode(m.group()).decode('utf-8', errors='ignore')
-            # Check if decoded text looks like a secret
-            if re.search(r'(password|secret|key|token|api)', decoded, re.I):
+
+            # ── 1. Direct secret keyword detection ──────────────────────────────
+            direct_keywords = [
+                (r'(?i)(password|secret|api[_-]?key|access[_-]?token|auth[_-]?token|bearer|private[_-]?key)', 'Direct Keyword Match'),
+                (r'(?i)(mysql|mongodb|postgres|redis|connection)', 'Database Keyword Match'),
+            ]
+            for pattern, label in direct_keywords:
+                for kw in re.finditer(pattern, decoded):
+                    findings.append({
+                        'type': f'Base64-Encoded {label}',
+                        'severity': 'CRITICAL',
+                        'match': m.group()[:20] + '...',
+                        'decoded_preview': decoded[:50],
+                        'context': text[max(0, m.start()-20):m.end()+20],
+                        'method': 'base64',
+                    })
+                    break  # one match per string is enough
+
+            # ── 2. Leetspeak / case-variant bypass detection ─────────────────
+            # Patterns like p@ssw0rd, PASSWORD, p@ssw0rd! (common bypass chars)
+            leet_patterns = [
+                r'(?i)p[\@x]ssw[o0]rd',          # p@ssw0rd / passworD
+                r'(?i)passw[o0]rd',               # passw0rd
+                r'(?i)s3cr3t',                    # s3cr3t
+                r'(?i)adm1n',                     # adm1n
+                r'(?i)s3cr3t',                   # s3cr3t
+                r'(?i)pr1v[ao]te',               # pr1vate
+                r'(?i)[a-z]*[0-9@][a-z]*[0-9@][a-z]*',  # generic: any word with 2+ leet chars
+            ]
+            for lp in leet_patterns:
+                if re.search(lp, decoded):
+                    findings.append({
+                        'type': 'Base64-Encoded (Leetspeak Bypass)',
+                        'severity': 'HIGH',
+                        'match': m.group()[:20] + '...',
+                        'decoded_preview': decoded[:50],
+                        'context': text[max(0, m.start()-20):m.end()+20],
+                        'method': 'base64-leet',
+                    })
+                    break
+
+            # ── 3. URL-encoded secret patterns (%XX sequences) ────────────────
+            # If decoded text still contains %-encoded strings like %40 (== @)
+            # and those resolve to a keyword, treat as secret
+            url_encoded_secrets = re.findall(
+                r'%[0-9A-Fa-f]{2}.*?(?:password|secret|token|key|auth)',
+                decoded, re.I
+            )
+            if url_encoded_secrets:
                 findings.append({
-                    'type': 'Base64-Encoded Secret',
+                    'type': 'Base64-Encoded (URL-Encoded Secret)',
                     'severity': 'CRITICAL',
                     'match': m.group()[:20] + '...',
-                    'decoded_preview': decoded[:50],
+                    'decoded_preview': decoded[:80],
                     'context': text[max(0, m.start()-20):m.end()+20],
-                    'method': 'base64',
+                    'method': 'base64-url',
                 })
+
+            # ── 4. Base16 (hex) encoded secret detection ──────────────────────
+            # Detect hex strings that look like encoded credentials:
+            # e.g., 70617373776f7264 == "password" in hex
+            hex_secret_patterns = [
+                (r'^[0-9a-f]{8,32}$', 'Hex string (potential hex-encoded secret)'),
+            ]
+            for hex_re, label in hex_secret_patterns:
+                # Check if this hex decodes to ASCII letters
+                try:
+                    # Try interpreting as hex encoding of ASCII text
+                    hex_clean = re.sub(r'[^0-9a-f]', '', decoded.lower())
+                    if len(hex_clean) >= 8 and len(hex_clean) % 2 == 0:
+                        ascii_bytes = bytes.fromhex(hex_clean)
+                        ascii_text = ascii_bytes.decode('ascii', errors='ignore')
+                        # If it decodes to printable ASCII keywords, flag it
+                        if re.search(r'(password|secret|token|key|api)', ascii_text, re.I):
+                            findings.append({
+                                'type': f'Base64-Encoded (Base16→{label})',
+                                'severity': 'HIGH',
+                                'match': m.group()[:20] + '...',
+                                'decoded_preview': ascii_text[:50],
+                                'context': text[max(0, m.start()-20):m.end()+20],
+                                'method': 'base16',
+                            })
+                except Exception:
+                    pass
+
         except Exception:
             pass
     return findings

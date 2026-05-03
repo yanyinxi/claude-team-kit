@@ -12,9 +12,14 @@
   - 不修改文件，只生成提案
 """
 import json
+import logging
 import os
 from pathlib import Path
 from datetime import datetime
+
+from harness._core.exceptions import handle_exception, safe_execute
+
+logger = logging.getLogger(__name__)
 
 
 def generate_proposal(analysis: dict, config: dict, root: Path) -> Path:
@@ -27,8 +32,8 @@ def generate_proposal(analysis: dict, config: dict, root: Path) -> Path:
     if api_key:
         try:
             return _generate_with_claude(analysis, config, root, api_key)
-        except Exception:
-            pass
+        except Exception as e:
+            handle_exception(e, "Claude API 生成提案失败，降级为模板", log_level="warning")
 
     return _generate_from_template(analysis, config, root)
 
@@ -202,8 +207,10 @@ def _record_to_instinct(analysis: dict, proposal_path: Path, confidence: float, 
                 source=source,
             )
             print(f"  🧠 instinct 已记录: {record_id}")
-    except Exception:
-        pass  # instinct 失败不影响提案生成
+    except ImportError as e:
+        handle_exception(e, "instinct_updater 模块导入失败", log_level="warning")
+    except Exception as e:
+        handle_exception(e, "记录到 instinct 失败", log_level="warning")
 
 
 def mark_proposal_accepted(proposal_path: Path, root: Path):
@@ -226,5 +233,9 @@ def mark_proposal_accepted(proposal_path: Path, root: Path):
             source="proposal-accepted",
         )
         print(f"✅ instinct 已升级 confidence=0.9: {record_id}")
+    except ImportError as e:
+        logger.warning(f"instinct_updater 模块导入失败: {e}")
+        print(f"⚠️ instinct 更新失败: {e}")
     except Exception as e:
+        handle_exception(e, "提案 accept 标记更新 instinct 失败", log_level="warning")
         print(f"⚠️ instinct 更新失败: {e}")

@@ -17,6 +17,11 @@ LIMIT_DAY=5000
 
 log_warn() { echo "⚠️  rate-limiter: $*" >&2; }
 
+# ── Safe JSON validate ────────────────────────────────────────────────────────
+is_valid_json() {
+    python3 -c "import json, sys; json.load(sys.stdin)" <<< "$1" &>/dev/null
+}
+
 load_state() {
     if [[ -f "$STATE_FILE" ]]; then
         python3 -c "
@@ -41,42 +46,77 @@ with open('${STATE_FILE}', 'w') as f:
 " <<< "$1" 2>/dev/null || true
 }
 
+# clean_old: 第一行 stdin=JSON, 后续行 stdin+argv 混用导致冲突
+# 统一改为全部从 stdin 读取：timestamp\nJSON
 clean_old() {
-    python3 -c "
+    python3 << 'PYEOF'
+import json, sys
+try:
+    first = sys.stdin.readline().strip()
+    now_ms = int(first) if first else 0
+    d = json.loads(sys.stdin.read())
+    for key, window in [('minute', 60*1000), ('hour', 3600*1000), ('day', 86400*1000)]:
+        d[key] = [t for t in d.get(key, []) if now_ms - t < window]
+    print(json.dumps(d), end='')
+except Exception:
+    print('{"minute":[],"hour":[],"day":[]}', end='')
+PYEOF
+}
+
+# 统一计数函数：key 作为第一行写入 stdin，Python 读取后输出计数
+count_from_state() {
+    python3 << 'PYEOF'
+import json, sys
+try:
+    key = sys.stdin.readline().strip()
+    d = json.loads(sys.stdin.read())
+    print(len(d.get(key, [])))
+except Exception:
+    print(0)
+PYEOF
+}
+
+# 生成新状态：追加时间戳到 minute/hour/day 三个窗口
+build_new_state() {
+    python3 << 'PYEOF'
 import json, sys, time as _t
-now_ms = int(sys.argv[1])
-window_min = 60 * 1000
-window_hr  = 3600 * 1000
-window_day = 86400 * 1000
-d = json.loads(sys.stdin.read())
-for key, window in [('minute', window_min), ('hour', window_hr), ('day', window_day)]:
-    d[key] = [t for t in d.get(key, []) if now_ms - t < window]
-print(json.dumps(d), end='')
-" "$1" 2>/dev/null || echo '{"minute":[],"hour":[],"day":[]}'
+try:
+    d = json.loads(sys.stdin.read())
+    now = int(_t.time() * 1000)
+    for key in ['minute', 'hour', 'day']:
+        d.setdefault(key, []).append(now)
+    print(json.dumps(d), end='')
+except Exception:
+    print('{"minute":[],"hour":[],"day":[]}', end='')
+PYEOF
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 NOW_MS=$(python3 -c "import time; print(int(time.time()*1000))" 2>/dev/null) || NOW_MS=0
+
+# 加载状态并清理过期记录（timestamp 作为首行传入 stdin）
 STATE=$(load_state)
-STATE=$(clean_old "$NOW_MS" <<< "$STATE")
+STATE=$(echo "$NOW_MS" | clean_old <<< "$STATE")
 
-CNT_MIN=$(python3 -c "import json; d=json.loads('${STATE}'); print(len(d.get('minute',[])))" 2>/dev/null) || CNT_MIN=0
-CNT_HR=$(python3 -c "import json; d=json.loads('${STATE}'); print(len(d.get('hour',[])))" 2>/dev/null) || CNT_HR=0
-CNT_DAY=$(python3 -c "import json; d=json.loads('${STATE}'); print(len(d.get('day',[])))" 2>/dev/null) || CNT_DAY=0
+# 验证清理后的状态是否为有效 JSON，无效则使用默认空状态
+if ! is_valid_json "$STATE"; then
+    log_warn "Invalid state JSON, using empty state"
+    STATE='{"minute":[],"hour":[],"day":[]}'
+fi
 
-NEW_STATE=$(python3 -c "
-import json, sys, time as _t
-now = int(_t.time() * 1000)
-d = json.loads('${STATE}')
-for key in ['minute', 'hour', 'day']:
-    d.setdefault(key, []).append(now)
-print(json.dumps(d), end='')
-" 2>/dev/null) || NEW_STATE="$STATE"
+# 提取三个窗口的计数（key 作为首行传入 stdin）
+CNT_MIN=$(echo "minute"  | count_from_state <<< "$STATE")
+CNT_HR=$(echo "hour"    | count_from_state <<< "$STATE")
+CNT_DAY=$(echo "day"    | count_from_state <<< "$STATE")
 
+# 生成新状态（追加当前时间戳）
+NEW_STATE=$(echo "$STATE" | build_new_state)
+
+# 保存新状态
 save_state "$NEW_STATE"
 
-# 预防性警告 (80% 阈值)
+# ── 预防性警告 (80% 阈值) ───────────────────────────────────────────────────
 WARN_MIN=$((LIMIT_MIN * 80 / 100))
 WARN_HR=$((LIMIT_HR * 80 / 100))
 WARN_DAY=$((LIMIT_DAY * 80 / 100))

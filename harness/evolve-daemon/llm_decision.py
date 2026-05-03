@@ -137,7 +137,14 @@ def call_claude_api(
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        return None
+        raise EnvironmentError(
+            "ANTHROPIC_API_KEY 未设置，无法调用 LLM 决策引擎。\n"
+            "请先配置 API Key：\n"
+            "  1. 复制 .env.example 为 .env\n"
+            "  2. 填入 ANTHROPIC_API_KEY=your_key\n"
+            "  3. 或在终端执行: export ANTHROPIC_API_KEY=your_key\n"
+            "获取 API Key: https://console.anthropic.com/settings/keys"
+        )
 
     api_config = config.get("claude_api", {})
 
@@ -294,11 +301,10 @@ def decide_action(sessions: list[dict], analysis: dict, config: Optional[dict] =
     }, ensure_ascii=False)
 
     # 调用 LLM
-    llm_result = call_claude_api(system_prompt, user_message, config)
-
-    if llm_result is None:
-        # API 不可用，降级为规则引擎
-        return _rule_based_decision(analysis, config)
+    try:
+        llm_result = call_claude_api(system_prompt, user_message, config)
+    except EnvironmentError as e:
+        raise EnvironmentError(str(e))
 
     # 风险检查
     risk_level = llm_result.get("risk_level", "medium")
