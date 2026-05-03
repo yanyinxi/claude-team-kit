@@ -57,34 +57,21 @@ _HOOK_SOURCE_MAP = {
 }
 
 
-def _infer_source_from_env() -> str:
-    """从环境变量和调用栈推断错误来源"""
-    # 1. 尝试从调用栈获取源文件（排除 collect_error.py 自身）
-    try:
-        tb = traceback.extract_stack()
-        for frame in reversed(tb):
-            filename = Path(frame.filename).name
-            # 跳过 collect_error.py 自身和标准库
-            if filename == "collect-error.py":
-                continue
-            if filename.endswith(".py") and "site-packages" not in frame.filename:
-                return f"hooks/bin/{filename}:{frame.lineno}"
-    except Exception:
-        pass
-
-    # 2. 从 CLAUDE_HOOK_SCRIPT 获取（Claude Code 传递的环境变量）
+def _infer_source_from_env(hook_data: dict = None) -> str:
+    """从环境变量和 hook_data 推断错误来源"""
+    # 1. 从 CLAUDE_HOOK_SCRIPT 获取（Claude Code 传递的环境变量）
     hook_script = os.environ.get("CLAUDE_HOOK_SCRIPT", "")
     if hook_script:
-        return f"hooks/bin/{hook_script}"
+        return _HOOK_SOURCE_MAP.get(hook_script, f"hooks/bin/{hook_script}")
 
-    # 3. 从 CLAUDE_PLUGIN_ROOT 推断
-    plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT", "")
-    if plugin_root:
-        return f"{plugin_root}/hooks/bin/collect-error.py"
+    # 2. 从 hook_data 的 tool_name 推断（PostToolUseFailure 事件自带工具名）
+    if hook_data:
+        tool = hook_data.get("tool_name", "")
+        if tool:
+            return f"hooks/{tool.lower()}.py"
 
-    # 4. 兜底
+    # 3. 兜底
     return "hooks/bin/collect-error.py"
-
 
 def _get_hook_script_from_path() -> str:
     """获取触发此 Hook 的脚本名"""
@@ -154,8 +141,8 @@ def collect_tool_failure(hook_data: dict = None) -> dict:
     error_msg = hook_data.get("error", "Unknown error")
     tool_input = hook_data.get("tool_input", {})
 
-    # 推断来源
-    source = _infer_source_from_env()
+    # 推断来源：从 hook_data 中的工具名
+    source = _infer_source_from_env(hook_data)
 
     # 获取上下文
     agents, skills = _get_agents_and_skills()
@@ -241,29 +228,53 @@ def collect_session_summary_errors() -> list[dict]:
     return errors
 
 
+def _detect_event_type(hook_data: dict) -> str:
+    """
+    从 stdin 数据结构推断事件类型。
+
+    Claude Code 不设置 CLAUDE_HOOK_EVENT 环境变量，而是通过 hook 配置
+    调用不同的脚本。我们通过数据结构本身来区分：
+
+    - PostToolUseFailure: 包含 error 字段
+    - PostToolUseSuccess: 包含 result 字段（无 error）
+    - Stop: CLAUDE_HOOK_EVENT == "Stop"（会话结束事件）
+    """
+    if "error" in hook_data and hook_data["error"]:
+        return "PostToolUseFailure"
+    if "result" in hook_data or "output" in hook_data:
+        return "PostToolUseSuccess"
+    return "Unknown"
+
+
 def main():
     """
     主入口:
-    1. 解析 Hook 事件类型
-    2. 构建错误记录
-    3. 写入 error.jsonl
+    1. 从 stdin 读取 Hook 事件数据
+    2. 推断事件类型（不依赖不可靠的 CLAUDE_HOOK_EVENT）
+    3. 构建错误记录并写入 error.jsonl
     """
     try:
-        # 尝试从 stdin 读取事件数据
+        # 从 stdin 读取事件数据（Claude Code 通过管道传递 JSON）
         hook_data = _load_hook_context()
 
-        # 判断事件类型
-        hook_event = os.environ.get("CLAUDE_HOOK_EVENT", "")
+        # 推断事件类型（从数据结构判断，而非环境变量）
+        hook_event = _detect_event_type(hook_data)
 
-        # 如果 hook_event 为空，尝试从 hook_data 推断
-        if not hook_event and hook_data:
-            hook_event = hook_data.get("hook_event", "") or hook_data.get("hookName", "")
+        # 调试日志：帮助诊断是否有事件到达
+        if not hook_data:
+            print(json.dumps({
+                "collected": False,
+                "reason": "empty_hook_data",
+                "skipped": True,
+                "debug": "No stdin data received from Claude Code"
+            }))
+            return
 
-        if "PostToolUseFailure" in hook_event:
-            # PostToolUseFailure: 工具执行失败（传入已读取的 hook_data）
+        if hook_event == "PostToolUseFailure":
+            # 工具执行失败：构建错误记录
             record = collect_tool_failure(hook_data)
-        elif "Stop" in hook_event:
-            # Stop: 会话结束，汇总错误
+        elif hook_event == "Stop" or os.environ.get("CLAUDE_HOOK_EVENT", "") == "Stop":
+            # Stop: 会话结束，汇总 failures.jsonl 中的错误
             session_errors = collect_session_summary_errors()
             if session_errors:
                 for err in session_errors:
@@ -283,12 +294,20 @@ def main():
             else:
                 print(json.dumps({"collected": True, "errors_count": 0}))
                 return
+        elif hook_event == "PostToolUseSuccess":
+            # 成功事件不写入 error.jsonl，只记录日志
+            print(json.dumps({
+                "collected": False,
+                "reason": "success_event",
+                "skipped": True
+            }))
+            return
         else:
-            # 其他事件，记录为 hook_error
+            # 未知事件：记录为 hook_error（帮助调试）
             record = build_error_record(
                 error_type=ErrorType.HOOK_ERROR,
-                error_message=f"Hook event: {hook_event}",
-                source=_infer_source_from_env(),
+                error_message=f"Unknown hook event, data: {str(hook_data)[:200]}",
+                source=_infer_source_from_env(hook_data),
                 hook_event=hook_event,
             )
 
