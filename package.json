@@ -1,6 +1,6 @@
 {
   "name": "claude-harness-kit",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Claude Harness Kit — Human steers, Agents execute. 多 Agent 协作、通用 Skills、持续进化",
   "main": "index.js",
   "files": [

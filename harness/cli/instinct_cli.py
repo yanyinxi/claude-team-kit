@@ -27,10 +27,21 @@ INSTINCT_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # ── Schema: {"records": [...], "meta": {...}} ──────────────────────────────────
 
+# CHK 版本（统一从 _core/version.json 读取）
+def _get_chk_version() -> str:
+    try:
+        version_file = Path(__file__).parent.parent / "_core" / "version.json"
+        if version_file.exists():
+            data = json.loads(version_file.read_text())
+            return data.get("version", "0.0.0")
+    except Exception:
+        pass
+    return "0.0.0"
+
 DEFAULT_SCHEMA = {
     "records": [],
     "meta": {
-        "version": "1.0",
+        "version": _get_chk_version(),
         "created": datetime.utcnow().isoformat() + "Z",
         "updated": datetime.utcnow().isoformat() + "Z",
     }

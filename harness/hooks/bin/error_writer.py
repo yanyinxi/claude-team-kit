@@ -31,17 +31,17 @@ class ErrorType:
     VALIDATION_ERROR = "validation_error"  # 验证失败
 
 
-# 默认 CHK 版本（动态读取）
+# CHK 版本（统一从 version.json 读取）
 def get_chk_version() -> str:
     try:
         root = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", ""))
-        pkg = root / "package.json"
-        if pkg.exists():
-            data = json.loads(pkg.read_text(encoding="utf-8"))
-            return data.get("version", "2.0")
+        version_file = root / "_core" / "version.json"
+        if version_file.exists():
+            data = json.loads(version_file.read_text(encoding="utf-8"))
+            return data.get("version", "0.0.0")
     except Exception:
         pass
-    return "2.0"
+    return "0.0.0"
 
 
 def _get_lock_file(log_file: Path) -> Path:
