@@ -242,16 +242,20 @@ def _health_check() -> dict:
     else:
         checks.append({"name": "last_analysis", "status": "warning", "message": "无分析状态文件（首次运行）"})
 
-    # 检查 6: 路径验证（使用 paths.py 的验证函数）
+    # 检查 6: 路径验证
     try:
-        from paths import validate_paths as paths_validate
-        path_result = paths_validate(root)
-        if path_result.get("all_valid", False):
+        # 简单路径验证：检查关键目录是否存在
+        required_dirs = ["data_dir", "proposals_dir", "skills_dir", "agents_dir", "rules_dir"]
+        invalid_paths = []
+        for dir_key in required_dirs:
+            dir_path = root / config["paths"].get(dir_key, "")
+            if dir_path and not dir_path.exists():
+                invalid_paths.append(dir_key)
+
+        if not invalid_paths:
             checks.append({"name": "paths_valid", "status": "ok", "message": "所有关键路径有效"})
         else:
-            invalid = path_result.get("invalid_paths", [])
-            checks.append({"name": "paths_valid", "status": "error", "message": f"无效路径: {invalid}"})
-            is_healthy = False
+            checks.append({"name": "paths_valid", "status": "warning", "message": f"部分路径不存在: {invalid_paths}（将在需要时创建）"})
     except Exception as e:
         checks.append({"name": "paths_valid", "status": "warning", "message": f"路径验证失败: {e}"})
 

@@ -459,8 +459,10 @@ def dispatch_evolution(analysis: dict, config: dict, root: Path | None = None, s
 
     # 从 sessions 中提取 instinct_record_ids
     instinct_ids = []
-    for s in sessions:
-        instinct_ids.extend(s.get("instinct_record_ids", []))
+    if sessions:
+        for s in sessions:
+            if isinstance(s, dict):  # 安全检查：确保 s 是字典
+                instinct_ids.extend(s.get("instinct_record_ids", []))
     instinct_ids = list(dict.fromkeys(instinct_ids))  # 去重
 
     for dimension, target in seen_dimensions.items():

@@ -304,7 +304,15 @@ def decide_action(sessions: list[dict], analysis: dict, config: Optional[dict] =
     try:
         llm_result = call_claude_api(system_prompt, user_message, config)
     except EnvironmentError as e:
-        raise EnvironmentError(str(e))
+        # 网络/IO 错误不应该中断主流程，返回保守决策
+        logger.warning(f"LLM 调用失败（EnvironmentError）: {e}")
+        return {
+            "action": "propose",
+            "reason": f"LLM 调用失败: {e}，使用保守决策",
+            "confidence": 0.3,
+            "risk_level": "high",
+            "id": f"proposal-{datetime.now().strftime('%Y%m%d%H%M%S')}",
+        }
 
     # 风险检查
     risk_level = llm_result.get("risk_level", "medium")

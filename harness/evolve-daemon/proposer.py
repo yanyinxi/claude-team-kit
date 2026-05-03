@@ -14,8 +14,14 @@
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 from datetime import datetime
+
+# 添加 harness 到 Python path
+_harness_root = Path(__file__).parent.parent.parent
+if str(_harness_root) not in sys.path:
+    sys.path.insert(0, str(_harness_root))
 
 from harness._core.exceptions import handle_exception, safe_execute
 
@@ -224,7 +230,13 @@ def mark_proposal_accepted(proposal_path: Path, root: Path):
         # 提取建议中的核心内容
         import re
         matches = re.findall(r"文件:\s*(\S+)", content)
-        target = matches[0] if matches else str(proposal_path.name)
+        if matches:
+            target = matches[0]
+        else:
+            # 尝试从文件名提取：proposal_xxx.md -> xxx
+            import re
+            name_match = re.search(r"proposal_(.+?)\.md", str(proposal_path.name))
+            target = name_match.group(1) if name_match else "unknown"
         record_id = add_pattern(
             pattern=f"提案已采纳: {target}",
             correction="提案已应用，待后续验证",

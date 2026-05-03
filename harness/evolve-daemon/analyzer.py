@@ -135,12 +135,25 @@ def _analyze_performance(sessions: list[dict]) -> dict:
         if start_time and end_time:
             try:
                 from datetime import datetime
-                fmt = "%Y-%m-%dT%H:%M:%S"
-                start = datetime.fromisoformat(start_time.replace("Z", "+00:00").split("+")[0])
-                end = datetime.fromisoformat(end_time.replace("Z", "+00:00").split("+")[0])
-                duration = (end - start).total_seconds()
-                if duration > 0:
-                    session_durations.append(duration)
+                # 标准化时间字符串：处理 Z 和时区
+                def parse_iso_time(ts: str) -> datetime | None:
+                    if not ts:
+                        return None
+                    ts = ts.strip()
+                    # 去掉 UTC 标记
+                    ts = ts.replace("Z", "+00:00")
+                    # 去掉时区部分以避免 fromisoformat 在某些格式上失败
+                    if "+" in ts:
+                        ts = ts.split("+")[0]
+                    elif "-" in ts and ts.count("-") > 2:  # 可能是带时区的负偏移
+                        ts = ts.rsplit("-", 1)[0]
+                    return datetime.fromisoformat(ts)
+                start = parse_iso_time(start_time)
+                end = parse_iso_time(end_time)
+                if start and end:
+                    duration = (end - start).total_seconds()
+                    if duration > 0:
+                        session_durations.append(duration)
             except (ValueError, TypeError):
                 pass
 
@@ -244,12 +257,22 @@ def _analyze_interaction(sessions: list[dict]) -> dict:
         if start and end:
             try:
                 from datetime import datetime
-                fmt = "%Y-%m-%dT%H:%M:%S"
-                start_dt = datetime.fromisoformat(start.replace("Z", "+00:00").split("+")[0])
-                end_dt = datetime.fromisoformat(end.replace("Z", "+00:00").split("+")[0])
-                task_duration = (end_dt - start_dt).total_seconds()
-                if task_duration > 0:
-                    task_durations.append(task_duration)
+                def parse_iso_time(ts: str) -> datetime | None:
+                    if not ts:
+                        return None
+                    ts = ts.strip()
+                    ts = ts.replace("Z", "+00:00")
+                    if "+" in ts:
+                        ts = ts.split("+")[0]
+                    elif "-" in ts and ts.count("-") > 2:
+                        ts = ts.rsplit("-", 1)[0]
+                    return datetime.fromisoformat(ts)
+                start_dt = parse_iso_time(start)
+                end_dt = parse_iso_time(end)
+                if start_dt and end_dt:
+                    task_duration = (end_dt - start_dt).total_seconds()
+                    if task_duration > 0:
+                        task_durations.append(task_duration)
             except (ValueError, TypeError):
                 pass
 
@@ -294,14 +317,13 @@ def _analyze_security(sessions: list[dict]) -> dict:
         "format disk", "shutdown", "reboot",
     ]
 
-    # 敏感信息模式
+    # 敏感信息模式（预编译正则以提高性能）
     sensitive_patterns_def = [
-        {"pattern": r"password\s*=", "label": "hardcoded_password"},
-        {"pattern": r"api[_-]?key\s*=", "label": "hardcoded_api_key"},
-        {"pattern": r"secret\s*=", "label": "hardcoded_secret"},
-        {"pattern": r"token\s*=\s*['\"][a-zA-Z0-9]{20,}['\"]", "label": "hardcoded_token"},
+        {"pattern": re.compile(r"password\s*=", re.IGNORECASE), "label": "hardcoded_password"},
+        {"pattern": re.compile(r"api[_-]?key\s*=", re.IGNORECASE), "label": "hardcoded_api_key"},
+        {"pattern": re.compile(r"secret\s*=", re.IGNORECASE), "label": "hardcoded_secret"},
+        {"pattern": re.compile(r"token\s*=\s*['\"][a-zA-Z0-9]{20,}['\"]"), "label": "hardcoded_token"},
     ]
-    import re
 
     for s in sessions:
         # 危险操作检测
@@ -317,11 +339,11 @@ def _analyze_security(sessions: list[dict]) -> dict:
             hook_name = hook.get("hook_name", "unknown")
             permission_requests[hook_name] += 1
 
-        # 敏感信息暴露检测
+        # 敏感信息暴露检测（使用预编译正则）
         for msg in s.get("messages", []):
             content = str(msg.get("content", ""))
             for sp in sensitive_patterns_def:
-                if re.search(sp["pattern"], content, re.IGNORECASE):
+                if sp["pattern"].search(content):
                     sensitive_patterns.append({
                         "session_id": s.get("session_id", "unknown"),
                         "type": sp["label"],
@@ -388,13 +410,15 @@ def _analyze_context(sessions: list[dict], config: dict, root: Path) -> dict:
             source_id = source.get("source_id", "unknown")
             knowledge_reuse[source_id] += 1
 
-        # 连贯性评分（基于上下文重复程度）
-        # 如果上下文中重复的关键词多，说明连贯性好
+        # 连贯性评分（基于词汇多样性）
+        # 词汇越丰富（unique_ratio 接近 1），说明内容发散，可能连贯性差
+        # 词汇越单调（unique_ratio 接近 0），说明聚焦，可能连贯性好
         all_content = " ".join([str(m.get("content", "")) for m in messages])
         words = all_content.split()
         if len(words) > 10:
             unique_ratio = len(set(words)) / len(words)
-            coherence = 1.0 - unique_ratio  # 重复多表示连贯
+            # 词汇单调=聚焦=连贯性好，所以 coherence=unique_ratio
+            coherence = unique_ratio
             coherence_scores.append(coherence)
 
     # 知识复用率

@@ -38,14 +38,9 @@ class SmartEvolutionEngine:
     def _init_knowledge_base(self):
         """初始化知识库"""
         if not self.knowledge_base.exists():
-            self._write_jsonl(self.knowledge_base.with_suffix(".json"), {
-                "version": "1.0",
-                "created": datetime.now().isoformat(),
-                "rules": [],  # 可执行规则列表
-                "patterns": [],  # 错误模式
-                "solutions": [],  # 解决方案
-                "verified_effects": [],  # 已验证有效的改进
-            })
+            self.knowledge_base.parent.mkdir(parents=True, exist_ok=True)
+            # 创建一个空的 JSONL 文件作为初始化标记
+            self.knowledge_base.write_text("", encoding="utf-8")
 
     def _write_jsonl(self, path: Path, data: dict):
         """写入 JSONL 文件"""

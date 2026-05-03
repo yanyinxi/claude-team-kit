@@ -11,9 +11,15 @@
 import json
 import logging
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+# 添加 harness 到 Python path
+_harness_root = Path(__file__).parent.parent.parent
+if str(_harness_root) not in sys.path:
+    sys.path.insert(0, str(_harness_root))
 
 from harness._core.exceptions import handle_exception, safe_execute
 
@@ -145,8 +151,14 @@ def validate_sessions_file(sessions_file: Path, quarantine_dir: Optional[Path] =
                     f.write(line + "\n")
                     quarantined_count += 1
 
-        # 覆写有效数据
-        sessions_file.write_text("\n".join(valid_lines) + "\n")
+        # 覆写有效数据（原子操作：先写临时文件，再重命名）
+        if valid_lines:
+            temp_file = sessions_file.with_suffix(".jsonl.tmp")
+            temp_file.write_text("\n".join(valid_lines) + "\n", encoding="utf-8")
+            temp_file.replace(sessions_file)
+        else:
+            # 空文件也用原子操作
+            sessions_file.write_text("", encoding="utf-8")
 
         return {
             "total": total,
@@ -199,7 +211,13 @@ def clean_old_sessions(sessions_file: Path, max_age_days: int = 90) -> dict:
             except (json.JSONDecodeError, ValueError):
                 cleaned += 1
 
-        sessions_file.write_text("\n".join(kept_lines) + "\n")
+        # 原子写入：先写临时文件，再重命名
+        if kept_lines:
+            temp_file = sessions_file.with_suffix(".jsonl.tmp")
+            temp_file.write_text("\n".join(kept_lines) + "\n", encoding="utf-8")
+            temp_file.replace(sessions_file)
+        else:
+            sessions_file.write_text("", encoding="utf-8")
 
     except OSError as e:
         handle_exception(e, f"清理旧会话失败: {sessions_file}", default_return={"cleaned": 0, "kept": 0}, log_level="warning")

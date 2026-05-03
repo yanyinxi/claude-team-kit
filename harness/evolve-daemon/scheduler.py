@@ -18,6 +18,11 @@ from datetime import datetime
 from pathlib import Path
 from threading import Lock
 
+# 添加 harness 到 Python path
+_harness_root = Path(__file__).parent.parent.parent
+if str(_harness_root) not in sys.path:
+    sys.path.insert(0, str(_harness_root))
+
 from harness._core.exceptions import handle_exception, safe_execute
 
 logger = logging.getLogger(__name__)
@@ -224,6 +229,7 @@ class SchedulerManager:
             self._running = False
             self._start_time = None
             self._open_files = []
+            self._heartbeat_count = 0  # 初始化心跳计数器
             self._initialized = True
 
     def load_config(self):
@@ -340,7 +346,7 @@ class SchedulerManager:
             run_evolution_cycle()
         else:
             # 心跳正常时也定期检查回滚状态（每 6 次心跳约 1 小时）
-            self._heartbeat_count = getattr(self, "_heartbeat_count", 0) + 1
+            self._heartbeat_count += 1
             if self._heartbeat_count % 6 == 0:
                 print(f"[{datetime.now().isoformat()}] 定期回滚状态检查...")
                 self._rollback_check()
