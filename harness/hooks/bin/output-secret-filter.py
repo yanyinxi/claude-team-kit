@@ -57,6 +57,8 @@ PATTERNS = [
 # High-entropy detection (Shannon entropy > 4.5 = likely random secret)
 def high_entropy(text: str, window: int = 20) -> list:
     """Find high-entropy spans that might be secrets."""
+    if len(text) < window:
+        return []
     import math
     results = []
     for i in range(len(text) - window + 1):

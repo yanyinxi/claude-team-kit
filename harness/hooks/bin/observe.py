@@ -264,11 +264,11 @@ def analyze_tool_pattern(tool_name: str, tool_input: dict, content: str) -> str:
             return "read:other"
 
     if base in ("Write", "Edit") or tool_name in ("Write", "Edit"):
-        if re.search(r"test|spec|__test__|spec\.", combined):
+        if re.search(r"\b(test|spec|__test__|spec\.)\w*", combined):
             return "test_write"
-        if re.search(r"config|setup|settings|manifest", combined):
+        if re.search(r"\b(config|setup|settings|manifest)\w*", combined):
             return "config_write"
-        if re.search(r"readme|doc|changelog|license", combined):
+        if re.search(r"\b(readme|doc|changelog|license)\w*", combined):
             return "docs_write"
         return "code_write"
 
