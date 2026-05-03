@@ -21,6 +21,41 @@ from pathlib import Path
 from typing import Optional
 
 
+# ── 统一模型配置 ─────────────────────────────────────────────
+def get_haiku_model() -> str:
+    return os.environ.get("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+
+def get_sonnet_model() -> str:
+    return os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6-20250514")
+
+def get_llm_config() -> dict:
+    """统一 LLM 配置参数，所有模块引用此处"""
+    model = os.environ.get("ANTHROPIC_MODEL")
+    return {
+        # 模型
+        "extract_model": model or "claude-haiku-4-5-20251001",
+        "analyze_model": model or "claude-sonnet-4-6-20250514",
+        "decide_model": model or "claude-sonnet-4-6-20250514",
+        # Haiku 参数（快速分类）
+        "extract_max_tokens": 4096,
+        "extract_temperature": 0.1,
+        # Sonnet 参数（深度分析）
+        "analyze_max_tokens": 4096,
+        "analyze_temperature": 0.3,
+        "decide_max_tokens": 2048,
+        "decide_temperature": 0.2,
+        # API
+        "base_url": os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com"),
+        "api_key": os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN", "PROXY_MANAGED"),
+    }
+
+def create_llm_client() -> "Anthropic":
+    """创建统一的 LLM 客户端"""
+    from anthropic import Anthropic
+    cfg = get_llm_config()
+    return Anthropic(api_key=cfg["api_key"], base_url=cfg["base_url"])
+
+
 # ── 路径常量 ────────────────────────────────────────────────
 def _find_root() -> Path:
     return Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
@@ -257,18 +292,89 @@ def should_auto_apply(entry: dict) -> tuple[bool, str]:
 
 def is_covered_by_kb(correction_text: str, root: Optional[Path] = None) -> tuple[bool, str | None]:
     """
-    检查纠正是否已被知识库覆盖。
+    检查纠正是否已被知识库覆盖（语义相似度检查）。
+    优先用 LLM 做语义匹配，fallback 到字符串包含匹配。
     返回: (is_covered, matched_kb_id)
     """
+    import os as _os
     kb = load_active_kb(root)
     correction_lower = correction_text.lower()
 
+    # 先做快速字符串匹配
     for entry in kb:
         for example in entry.get("specific_examples", []):
             if example.lower() in correction_lower or correction_lower in example.lower():
                 return True, entry.get("id")
 
+    # 语义匹配（调用 LLM）
+    if _os.environ.get("ANTHROPIC_BASE_URL") or _os.environ.get("ANTHROPIC_API_KEY") or _os.environ.get("ANTHROPIC_AUTH_TOKEN"):
+        matched_id = _semantic_match(correction_text, kb)
+        if matched_id:
+            return True, matched_id
+
     return False, None
+
+
+def _semantic_match(text: str, kb: list[dict]) -> str | None:
+    """
+    用 LLM 做语义相似度匹配。
+    返回匹配的 KB 条目 ID，或 None。
+    """
+    if not kb:
+        return None
+
+    try:
+        client = create_llm_client()
+
+        # 最多对比 10 条
+        sample_kb = kb[:10]
+        kb_text = "\n".join([
+            f"- id={e['id']} type={e.get('error_type','')[:40]} root={e.get('root_cause','')[:60]}"
+            for e in sample_kb
+        ])
+
+        system = """你是一个代码库知识匹配专家。判断新错误是否和已有知识相似。
+
+规则：
+- 如果根因相同或非常相似，返回匹配的 id
+- 如果完全不相关，返回 null
+- 宁可保守，不要误匹配
+
+输出 JSON：
+{"matched_id": "kb-xxxx" | null, "confidence": 0.0-1.0, "reason": "简短理由"}"""
+
+        user = f"""已有知识：
+{kb_text}
+
+待匹配错误：{text}
+
+判断是否已有相似知识？"""
+
+        response = client.messages.create(
+            model=get_haiku_model(),
+            max_tokens=512,
+            temperature=0.1,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+        # 提取文本内容（跳过 thinking block，处理 ```json 包裹）
+        content = ""
+        for block in response.content:
+            if hasattr(block, 'text') and block.text:
+                content = block.text.strip()
+                break
+        if not content:
+            return None
+        if content.startswith("```"):
+            content = content.split("\n", 1)[-1]
+            content = content.rsplit("```", 1)[0].strip()
+        result = json.loads(content) if content else {}
+        matched_id = result.get("matched_id")
+        if matched_id:
+            print(f"  [KB] 语义匹配: {text[:40]} → {matched_id} (conf={result.get('confidence', 0):.2f})")
+        return matched_id
+    except Exception:
+        return None
 
 
 def should_activate(entry: dict) -> bool:

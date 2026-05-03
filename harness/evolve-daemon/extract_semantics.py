@@ -16,6 +16,10 @@ import os
 import sys
 from pathlib import Path
 
+# 添加同级的 kb_shared 到 Python path
+sys.path.insert(0, str(Path(__file__).parent))
+from kb_shared import get_haiku_model, create_llm_client
+
 
 def find_project_root():
     return Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
@@ -59,16 +63,25 @@ def extract_with_haiku(session: dict) -> list[dict]:
 
     # 方案 1: 使用 anthropic SDK
     try:
-        from anthropic import Anthropic
-        client = Anthropic(api_key=api_key)
+        client = create_llm_client()
         response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model=get_haiku_model(),
             max_tokens=512,
             temperature=0.1,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
-        text = response.content[0].text
+        # 提取文本内容（跳过 thinking block，处理 ```json 包裹）
+        text = ""
+        for block in response.content:
+            if hasattr(block, 'text') and block.text:
+                text = block.text.strip()
+                break
+        if not text:
+            return []
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1]
+            text = text.rsplit("```", 1)[0].strip()
         corrections = json.loads(text)
         return corrections if isinstance(corrections, list) else []
     except ImportError:
@@ -77,15 +90,16 @@ def extract_with_haiku(session: dict) -> list[dict]:
     # 方案 2: 标准库 REST API（零外部依赖）
     try:
         import urllib.request
+        base_url = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
         body = json.dumps({
-            "model": "claude-haiku-4-5-20251001",
+            "model": get_haiku_model(),
             "max_tokens": 512,
             "temperature": 0.1,
             "system": system_prompt,
             "messages": [{"role": "user", "content": user_message}],
         }).encode("utf-8")
         req = urllib.request.Request(
-            "https://api.anthropic.com/v1/messages",
+            f"{base_url}/v1/messages",
             data=body,
             headers={
                 "x-api-key": api_key,
@@ -96,6 +110,9 @@ def extract_with_haiku(session: dict) -> list[dict]:
         with urllib.request.urlopen(req, timeout=10) as resp:
             result = json.loads(resp.read())
             text = result["content"][0]["text"]
+            if text.startswith("```"):
+                text = text.split("\n", 1)[-1]
+                text = text.rsplit("```", 1)[0].strip()
             corrections = json.loads(text)
             return corrections if isinstance(corrections, list) else []
     except Exception:

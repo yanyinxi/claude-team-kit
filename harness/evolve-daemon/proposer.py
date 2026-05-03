@@ -23,7 +23,13 @@ _harness_root = Path(__file__).parent.parent.parent
 if str(_harness_root) not in sys.path:
     sys.path.insert(0, str(_harness_root))
 
+# 添加同级的 kb_shared 到 Python path
+_kb_root = Path(__file__).parent
+if str(_kb_root) not in sys.path:
+    sys.path.insert(0, str(_kb_root))
+
 from harness._core.exceptions import handle_exception, safe_execute
+from kb_shared import get_sonnet_model, create_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +51,10 @@ def generate_proposal(analysis: dict, config: dict, root: Path) -> Path:
 
 
 def _call_claude_api(api_key: str, model: str, system_prompt: str, user_message: str, max_tokens: int, temperature: float) -> str | None:
-    """调用 Claude API — 优先使用 SDK，降级为 REST API"""
-    # 方案 1: 使用 anthropic SDK（如果已安装）
+    """调用 Claude API — 优先使用统一 SDK 客户端，降级为 REST API"""
+    # 方案 1: 使用统一 SDK 客户端
     try:
-        from anthropic import Anthropic
-        client = Anthropic(api_key=api_key)
+        client = create_llm_client()
         response = client.messages.create(
             model=model,
             max_tokens=max_tokens,
@@ -57,8 +62,19 @@ def _call_claude_api(api_key: str, model: str, system_prompt: str, user_message:
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
-        return response.content[0].text
-    except ImportError:
+        # 提取文本内容（跳过 thinking block，处理 ```json 包裹）
+        text = ""
+        for block in response.content:
+            if hasattr(block, 'text') and block.text:
+                text = block.text.strip()
+                break
+        if not text:
+            return None
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1]
+            text = text.rsplit("```", 1)[0].strip()
+        return text
+    except Exception:
         pass
 
     # 方案 2: 使用标准库 urllib 直接调 REST API（零外部依赖）
@@ -74,8 +90,9 @@ def _call_claude_api(api_key: str, model: str, system_prompt: str, user_message:
             "messages": [{"role": "user", "content": user_message}],
         }).encode("utf-8")
 
+        base_url = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
         req = urllib.request.Request(
-            "https://api.anthropic.com/v1/messages",
+            f"{base_url}/v1/messages",
             data=body,
             headers={
                 "x-api-key": api_key,

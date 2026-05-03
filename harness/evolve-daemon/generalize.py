@@ -30,28 +30,46 @@ from kb_shared import (
     update_kb_all,
     now_iso,
     notify_llm_failure,
+    get_haiku_model,
+    get_sonnet_model,
+    create_llm_client,
 )
 
 
 # ── LLM 调用 ───────────────────────────────────────────────
+def _has_llm_access() -> bool:
+    """检查是否有 LLM 调用能力（代理或真实 API Key）"""
+    return bool(
+        os.environ.get("ANTHROPIC_API_KEY")
+        or os.environ.get("ANTHROPIC_AUTH_TOKEN")
+        or os.environ.get("ANTHROPIC_BASE_URL")
+    )
+
+
 def call_haiku(system: str, user: str, config: dict | None = None) -> dict | None:
     """用 Haiku 做简单判断（reuse/new）"""
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return None
-
     try:
-        from anthropic import Anthropic
-        client = Anthropic(api_key=api_key)
-        model = (config or {}).get("extract_model", "claude-haiku-4-5")
+        client = create_llm_client()
+        model = (config or {}).get("extract_model") or get_haiku_model()
         response = client.messages.create(
             model=model,
-            max_tokens=512,
+            max_tokens=4096,
             temperature=0.1,
             system=system,
             messages=[{"role": "user", "content": user}],
         )
-        text = response.content[0].text
+        # 提取文本内容（跳过 thinking block，处理 ```json 包裹）
+        text = ""
+        for block in response.content:
+            if hasattr(block, 'text') and block.text:
+                text = block.text.strip()
+                break
+        if not text:
+            raise ValueError(f"No text block in response: {[type(b).__name__ for b in response.content]}")
+        # 去掉 ```json ... ``` 包裹
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1]
+            text = text.rsplit("```", 1)[0].strip()
         return json.loads(text)
     except Exception as e:
         notify_llm_failure(str(e), "Haiku 调用失败", "")
@@ -60,14 +78,9 @@ def call_haiku(system: str, user: str, config: dict | None = None) -> dict | Non
 
 def call_sonnet(system: str, user: str, config: dict | None = None) -> dict | None:
     """用 Sonnet 做深度分析（新根因、merge 风险）"""
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return None
-
     try:
-        from anthropic import Anthropic
-        client = Anthropic(api_key=api_key)
-        model = (config or {}).get("analyze_model", "claude-sonnet-4-6")
+        client = create_llm_client()
+        model = (config or {}).get("analyze_model") or get_sonnet_model()
         response = client.messages.create(
             model=model,
             max_tokens=4096,
@@ -75,7 +88,18 @@ def call_sonnet(system: str, user: str, config: dict | None = None) -> dict | No
             system=system,
             messages=[{"role": "user", "content": user}],
         )
-        text = response.content[0].text
+        # 提取文本内容（跳过 thinking block，处理 ```json 包裹）
+        text = ""
+        for block in response.content:
+            if hasattr(block, 'text') and block.text:
+                text = block.text.strip()
+                break
+        if not text:
+            raise ValueError(f"No text block in response: {[type(b).__name__ for b in response.content]}")
+        # 去掉 ```json ... ``` 包裹（Sonnet 深度分析返回的 JSON 常用此格式）
+        if text.startswith("```"):
+            text = text.split("\n", 1)[-1]
+            text = text.rsplit("```", 1)[0].strip()
         return json.loads(text)
     except Exception as e:
         notify_llm_failure(str(e), "Sonnet 调用失败", "")
@@ -341,10 +365,10 @@ def process_errors(
         return []
 
     kb = load_active_kb(root)
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    has_llm = _has_llm_access()
 
     # ── 第一步：批量关联分析 ──────────────────────────────
-    if api_key:
+    if has_llm:
         system, user = build_step1_prompt(errors, kb)
         step1_results = call_haiku(system, user, config)
     else:
@@ -356,7 +380,7 @@ def process_errors(
 
     # ── 第二步：新根因深度分析 ─────────────────────────────
     for i, result in enumerate(step1_results):
-        if result.get("action") == "new" and api_key:
+        if result.get("action") == "new" and has_llm:
             error = errors[i]
             matched_kb = None
             if result.get("matched_id"):
@@ -405,7 +429,7 @@ def process_errors(
             merged_pattern = group[0].get("matched_pattern", "merged_pattern")
 
             # 调用 Sonnet 评估风险
-            if api_key:
+            if has_llm:
                 system, user = build_step3_prompt(kb_entries, merged_pattern)
                 risk = call_sonnet(system, user, config)
 

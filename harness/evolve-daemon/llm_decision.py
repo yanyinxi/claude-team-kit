@@ -16,9 +16,14 @@ LLM 决策引擎 — 用 LLM 分析会话数据，决定下一步行动。
 """
 import json
 import os
+import sys
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+
+# 添加同级的 kb_shared 到 Python path
+sys.path.insert(0, str(Path(__file__).parent))
+from kb_shared import get_sonnet_model, create_llm_client
 
 
 def find_root() -> Path:
@@ -46,7 +51,7 @@ def _default_config():
             "high_risk_threshold": 0.5,
         },
         "claude_api": {
-            "decide_model": "claude-sonnet-4-6",
+            "decide_model": os.environ.get("ANTHROPIC_MODEL") or "claude-sonnet-4-6-20250514",
             "decide_max_tokens": 2048,
             "decide_temperature": 0.2,
         },
@@ -149,21 +154,24 @@ def call_claude_api(
     api_config = config.get("claude_api", {})
 
     try:
-        # 优先使用 SDK
-        from anthropic import Anthropic
-        client = Anthropic(api_key=api_key)
+        # 使用统一 SDK 客户端
+        client = create_llm_client()
         response = client.messages.create(
-            model=api_config.get("decide_model", "claude-sonnet-4-6"),
+            model=api_config.get("decide_model") or get_sonnet_model(),
             max_tokens=api_config.get("decide_max_tokens", 2048),
             temperature=api_config.get("decide_temperature", 0.2),
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
+        # 提取文本内容（跳过 thinking block，处理 ```json 包裹）
         content = ""
         for block in response.content:
-            if hasattr(block, "text"):
-                content = block.text
+            if hasattr(block, "text") and block.text:
+                content = block.text.strip()
                 break
+        if content.startswith("```"):
+            content = content.split("\n", 1)[-1]
+            content = content.rsplit("```", 1)[0].strip()
 
     except ImportError:
         # 降级为 urllib
@@ -171,15 +179,16 @@ def call_claude_api(
             import urllib.request
 
             body = json.dumps({
-                "model": api_config.get("decide_model", "claude-sonnet-4-6"),
+                "model": api_config.get("decide_model") or get_sonnet_model(),
                 "max_tokens": api_config.get("decide_max_tokens", 2048),
                 "temperature": api_config.get("decide_temperature", 0.2),
                 "system": system_prompt,
                 "messages": [{"role": "user", "content": user_message}],
             }).encode("utf-8")
 
+            base_url = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
             req = urllib.request.Request(
-                "https://api.anthropic.com/v1/messages",
+                f"{base_url}/v1/messages",
                 data=body,
                 headers={
                     "x-api-key": api_key,
