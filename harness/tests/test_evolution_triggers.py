@@ -541,13 +541,15 @@ def test_full_pipeline_without_api():
         baseline = {"task_success_rate": 0.9, "user_correction_rate": 0.05,
                     "agent_failure_rate": 0.03, "satisfaction_score": 4.5}
         good_metrics = {"task_success_rate": 0.92, "user_correction_rate": 0.03,
-                        "agent_failure_rate": 0.02, "satisfaction_score": 4.8}
+                        "agent_failure_rate": 0.02, "satisfaction_score": 4.8,
+                        "sample_size": 10}
         decision = evaluate_proposal({"id": "pipeline-test"}, good_metrics, baseline)
         assert decision == "keep"
         ok("Pipeline Step 4: 回滚评估 → keep（指标改善）")
 
         bad_metrics = {"task_success_rate": 0.6, "user_correction_rate": 0.3,
-                       "agent_failure_rate": 0.15, "satisfaction_score": 2.0}
+                       "agent_failure_rate": 0.15, "satisfaction_score": 2.0,
+                       "sample_size": 10}
         decision = evaluate_proposal({"id": "pipeline-test"}, bad_metrics, baseline)
         assert decision == "rollback"
         ok("Pipeline Step 5: 回滚评估 → rollback（指标恶化）")

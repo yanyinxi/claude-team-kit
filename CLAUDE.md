@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 <!-- 由 chk-init 生成于 2026-05-03 — 基于项目分析 -->
-<!-- CHK Version: 0.6.1 -->
+<!-- CHK Version: 0.7.0 -->
 
 ## 项目概览
 
@@ -11,12 +11,12 @@ Human steers, Agents execute. 多 Agent 协作、通用 Skills、持续进化。
 ## 技术栈
 - 语言/构建: Node.js >=18 / npm
 - 插件入口: `index.js`
-- 配置文件: `package.json` (version: 0.6.1)
+- 配置文件: `package.json` (version: 0.7.0)
 
 ## 构建命令
 ```bash
 npm install   # 安装依赖
-npm test      # 运行测试 (69 测试)
+npm test      # 运行测试 (183 测试)
 ```
 
 ## 模块结构 (harness/)
@@ -33,22 +33,29 @@ harness/
 │   ├── smart_evolution_engine.py # 智能进化引擎
 │   ├── rollback.py         # 自动回滚机制
 │   ├── effect_tracker.py   # 效果跟踪
-│   ├── knowledge/          # 符号链接 → ../knowledge/evolved
-│   └── monitor-rollback.sh # 回滚监控
+│   └── templates/          # 进化提案模板
 ├── hooks/          # Hook 配置和脚本 (33 个)
 │   ├── bin/
-│   │   ├── collect_error.py    # 错误收集
-│   │   ├── collect_success.py  # 成功跟踪 ← NEW
-│   │   ├── context-injector.py # 上下文注入
+│   │   ├── collect_error.py     # 错误收集
+│   │   ├── collect_success.py   # 成功跟踪
+│   │   ├── collect_session.py   # 会话收集
+│   │   ├── collect_agent.py     # Agent 调用收集
+│   │   ├── collect_skill.py     # Skill 调用收集
+│   │   ├── context-injector.py  # 上下文注入
 │   │   └── ...
 │   └── hooks.json
-├── instinct/       # 本能记录系统
 ├── knowledge/      # 知识推荐引擎
 │   ├── knowledge_recommender.py # 双知识库推荐
 │   ├── lifecycle.py            # 知识生命周期
-│   ├── evolved/                # 进化知识 (原 evolve-daemon/knowledge/)
-│   └── manual/                 # 手工知识 (符号链接 → .claude/knowledge/)
+│   ├── decision/               # 架构决策记录 (ADR)
+│   ├── guideline/               # 开发规范
+│   ├── pitfall/                # 已知陷阱
+│   ├── process/                # 操作流程
+│   ├── model/                  # 数据模型
+│   └── evolved/                # 进化生成的知识
 ├── memory/         # 记忆系统
+│   ├── instinct-record.json   # 本能记录 (v3.0 合并)
+│   └── *.json                 # 用户反馈积累
 ├── rules/          # 扩展规则 (6 个)
 ├── skills/         # 35+ 个 Skill 集合
 └── tests/          # 测试套件
@@ -92,10 +99,8 @@ daemon.py (调度 + 执行)
 ### 双知识库
 | 知识库 | 路径 | 内容 |
 |--------|------|------|
-| 手工维护 | `.claude/knowledge/` 或 `harness/knowledge/manual/` | 专家知识 |
+| 手工维护 | `harness/knowledge/decision/`, `guideline/`, `pitfall/`, `process/`, `model/` | 专家知识 |
 | 进化生成 | `harness/knowledge/evolved/` | 学习知识 |
-
-> 注: `harness/evolve-daemon/knowledge/` 已符号链接到 `harness/knowledge/evolved/` 保持向后兼容
 
 ## 核心功能
 
@@ -120,12 +125,13 @@ architect, backend-dev, code-reviewer, codebase-analyzer, database-dev, debugger
 
 ## 已知陷阱
 - Hook 脚本统一在 `harness/hooks/`；repo root `hooks/` 是符号链接
-- instinct 数据路径已统一到 `harness/instinct/`
-- agents/ 旧路径已迁移到 `harness/agents/`
+- `.claude/` 只允许运行时数据（sessions.jsonl、error.jsonl 等），禁止代码文件
+- `harness/` 下只允许白名单子目录（见 `harness/docs/directory-structure-and-migration-plan.md`）
+- Python hook 脚本统一 underscore 命名（`collect_agent.py`），Shell hook 统一 hyphen 命名
 
 ## 相关知识
-- 项目知识: `.claude/knowledge/` 或 `harness/knowledge/manual/`
+- 项目知识: `harness/knowledge/` (decision/, guideline/, pitfall/, process/, model/)
 - 团队规范: `harness/rules/`
 - 设计文档: `harness/docs/`
-- 进化数据: `harness/knowledge/evolved/` (原 `harness/evolve-daemon/knowledge/`)
-- 本能记录: `harness/instinct/`
+- 进化数据: `harness/knowledge/evolved/`
+- 本能记录: `harness/memory/instinct-record.json`

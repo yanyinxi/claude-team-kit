@@ -168,6 +168,14 @@ def evaluate_proposal(proposal: dict, metrics: dict, baseline: dict, config: dic
     if baseline_correction == 0 and current_correction > 0.1:
         triggers.append(f"新增纠正率 {current_correction:.0%}")
 
+    # 检查满意度（严重下降 → 回滚）
+    baseline_satisfaction = baseline.get("satisfaction_score", 5.0)
+    current_satisfaction = metrics.get("satisfaction_score", 5.0)
+    if current_satisfaction < 3.0:
+        triggers.append(f"满意度 {current_satisfaction}/5 < 3.0 阈值")
+    elif baseline_satisfaction > 0 and current_satisfaction < baseline_satisfaction * 0.7:
+        triggers.append(f"满意度下降超过 30%")
+
     # 检查样本量（需要足够的数据才有统计意义）
     if metrics.get("sample_size", 0) < 5:
         return "observe"  # 样本太少，继续观察

@@ -73,7 +73,15 @@ def aggregate_and_analyze(sessions: list[dict], config: dict, root: Path) -> dic
             tool_failures[tool] += count
         # 兼容旧格式：从 tool_failures 直接字段读取
         direct_tool_failures = s.get("tool_failures", 0)
-        if direct_tool_failures > 0 and not failures:
+        if isinstance(direct_tool_failures, list):
+            # 新格式：list of {"tool": "...", "error": "..."}
+            for f in direct_tool_failures:
+                if isinstance(f, dict):
+                    tool = f.get("tool", "unknown_tool")
+                    tool_failures[tool] += 1
+                elif isinstance(f, str):
+                    tool_failures["unknown_tool"] += 1
+        elif isinstance(direct_tool_failures, int) and direct_tool_failures > 0 and not failures:
             tool_failures["unknown_tool"] += direct_tool_failures
 
     # 统计技能使用
