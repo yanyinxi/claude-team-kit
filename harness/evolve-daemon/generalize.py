@@ -170,13 +170,14 @@ def build_step1_prompt(errors: list[dict], kb: list[dict]) -> tuple[str, str]:
     # 格式化知识库 — 只显示高置信度条目，避免 prompt 过长
     kb_text = ""
     if kb:
-        # 按置信度 × 验证次数排序，取最相关的 top 10
-        scored = sorted(
-            kb,
-            key=lambda e: e.get('confidence', 0) * (e.get('validation_count', 0) + 1),
-            reverse=True,
-        )
-        for entry in scored[:10]:  # 最多显示10条
+        # 按置信度排序，去重同类（取最高置信度的那条）
+        seen_types = {}
+        for e in sorted(kb, key=lambda x: x.get('confidence', 0), reverse=True):
+            et = e.get('error_type', 'unknown')
+            if et not in seen_types:
+                seen_types[et] = e
+        top_kb = list(seen_types.values())[:15]  # 最多15种类型
+        for entry in top_kb:
             kb_text += f"""- [{entry['id']}] {entry['error_type']}
     根因: {entry.get('root_cause', 'N/A')}
     具体例子: {', '.join(entry.get('specific_examples', [])[:3])}
