@@ -161,12 +161,12 @@ def test_kit_init_knowledge_index():
         (tmp / "package.json").write_text(json.dumps({"name": "test"}))
         rc, _, _ = run_init(tmp)
         if rc == 0:
-            idx = tmp / ".claude" / "knowledge" / "INDEX.md"
+            idx = tmp / "harness" / "knowledge" / "INDEX.md"
             if idx.exists():
                 content = idx.read_text()
                 if "知识库" in content or "knowledge" in content.lower():
                     PASS += 1
-                    print("  ✅ kit init: 生成 .claude/knowledge/INDEX.md")
+                    print("  ✅ kit init: 生成 harness/knowledge/INDEX.md")
                 else:
                     FAIL += 1
                     print("  ❌ kit init: INDEX.md 内容不完整")
@@ -253,7 +253,7 @@ def test_kit_gc_generates_report():
 
         rc, out, _ = run_kit(["gc"], cwd=tmp)
         # gc 可能因为没有 knowledge 条目而生成最小报告
-        if rc == 0 or "drift" in out.lower() or Path(tmp / ".claude" / "knowledge" / "drift-report.md").exists():
+        if rc == 0 or "drift" in out.lower() or Path(tmp / "harness" / "knowledge" / "drift-report.md").exists():
             PASS += 1
             print("  ✅ kit gc: 生成漂移报告")
         else:

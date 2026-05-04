@@ -11,13 +11,13 @@ from instinct_cli import INSTINCT_ROOT, INSTINCT_FILE
 
 
 def test_instinct_paths_use_harness_prefix():
-    """验证 instinct_cli 使用 harness/instinct/ 路径"""
-    # INSTINCT_ROOT 应为 harness/instinct/
+    """验证 instinct_cli 使用 harness/memory/ 路径"""
+    # INSTINCT_ROOT 应为 harness/memory/
     expected_parent = "harness"
     assert INSTINCT_ROOT.parts[-2] == expected_parent, \
         f"INSTINCT_ROOT 应在 harness/ 下，实际: {INSTINCT_ROOT}"
-    assert INSTINCT_ROOT.parts[-1] == "instinct", \
-        f"INSTINCT_ROOT 应为 instinct，实际: {INSTINCT_ROOT}"
+    assert INSTINCT_ROOT.parts[-1] == "memory", \
+        f"INSTINCT_ROOT 应为 memory，实际: {INSTINCT_ROOT}"
     print(f"INSTINCT_ROOT: {INSTINCT_ROOT} ✓")
 
 

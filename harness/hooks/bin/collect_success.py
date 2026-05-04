@@ -27,7 +27,7 @@ PROJECT_ROOT = get_project_root()
 CHK_ROOT = Path(os.environ.get("CLAUDE_PLUGIN_ROOT", str(PROJECT_ROOT / "harness")))
 EVOLVE_DIR = CHK_ROOT / "evolve-daemon"
 DATA_DIR = get_data_dir(PROJECT_ROOT)
-INSTINCT_FILE = CHK_ROOT / "instinct" / "instinct-record.json"
+INSTINCT_FILE = CHK_ROOT / "memory" / "instinct-record.json"
 EFFECT_LOG = EVOLVE_DIR / "knowledge" / "effect_tracking.jsonl"
 
 

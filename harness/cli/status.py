@@ -77,7 +77,7 @@ def main():
         print("\n3️⃣  Sessions: 无记录（首次使用中）")
 
     # 4. instinct 分布
-    instinct_file = root / "instinct" / "instinct-record.json"
+    instinct_file = root / "memory" / "instinct-record.json"
     if instinct_file.exists():
         try:
             data = json.loads(instinct_file.read_text(encoding="utf-8"))

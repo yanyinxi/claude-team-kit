@@ -44,7 +44,7 @@ def _default_config():
             "skills_dir": "skills",
             "agents_dir": "agents",
             "rules_dir": "rules",
-            "instinct_dir": "instinct",
+            "instinct_dir": "memory",
             "backups_dir": ".claude/data/backups",
         },
         "observation": {

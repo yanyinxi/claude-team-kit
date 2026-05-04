@@ -86,7 +86,7 @@
         "matcher": "Agent",
         "hooks": [{
           "type": "command",
-          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect-agent.py",
+          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect_agent.py",
           "timeout": 5
         }]
       },
@@ -94,7 +94,7 @@
         "matcher": "Skill",
         "hooks": [{
           "type": "command",
-          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect-skill.py",
+          "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/bin/collect_skill.py",
           "timeout": 5
         }]
       },

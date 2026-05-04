@@ -34,11 +34,11 @@ _KEYWORD_PATTERN = re.compile(r"[a-zA-Z0-9\+\#]+")
 # ── 路径配置 ──────────────────────────────────────────────────────────────────
 
 PROJECT_ROOT = Path(os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd()))
-# 知识库 1: 手工维护的知识 (.claude/knowledge/)
-KNOWLEDGE_DIR = PROJECT_ROOT / ".claude" / "knowledge"
+# 知识库 1: 手工维护的知识 (harness/knowledge/)
+KNOWLEDGE_DIR = PROJECT_ROOT / "harness" / "knowledge"
 # 知识库 2: 进化生成的知识 (harness/knowledge/evolved/)
 EVOLVE_KNOWLEDGE_DIR = PROJECT_ROOT / "harness" / "knowledge" / "evolved"
-INSTINCT_DIR = PROJECT_ROOT / "harness" / "instinct"
+INSTINCT_DIR = PROJECT_ROOT / "harness" / "memory"
 DATA_DIR = PROJECT_ROOT / ".claude" / "data"
 RECOMMENDATIONS_FILE = DATA_DIR / "knowledge_recommendations.json"
 
@@ -167,7 +167,7 @@ def load_evolved_knowledge() -> list[dict]:
 def load_knowledge_base() -> list[dict]:
     """加载所有知识条目（双知识库合并）
 
-    知识库 1: .claude/knowledge/ — 手工维护的专家知识 (通过 harness/knowledge/manual 符号链接访问)
+    知识库 1: harness/knowledge/ — 手工维护的专家知识
     知识库 2: harness/knowledge/evolved/ — 进化系统生成的知识
     """
     entries = []

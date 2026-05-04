@@ -5,7 +5,7 @@
 ### 目录结构 (v1.0 重构)
 - 全量模块统一到 `harness/` 下
 - `hooks/` 为符号链接 → `harness/hooks/`
-- instinct 数据路径: `harness/instinct/` (v2.0 统一)
+- instinct 数据路径: `harness/memory/` (v3.0 统一)
 
 ### Auto-Evolve 系统
 - 4 维度自主进化闭环 (v2)
@@ -28,7 +28,7 @@
 - 修复: 统一生成确定性 session_id
 
 ### 路径漂移
-- agents/instinct → harness/instinct (v2.0)
+- agents/instinct → harness/memory (v3.0)
 - drift-report 路径需同步更新
 
 ## 操作流程

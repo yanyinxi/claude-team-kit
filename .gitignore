@@ -4,6 +4,7 @@
 .claude/data/error.jsonl
 .claude/data/error.jsonl.lock
 .claude/data/failures.jsonl
+.claude/data/backups/
 .claude/data/homunculus/
 .claude/data/observations.jsonl
 .claude/data/sessions.jsonl
@@ -12,8 +13,7 @@
 .claude/proposals/
 
 # harness 运行时数据
-harness/evolve-daemon/instinct/instinct-record.json
-harness/instinct/instinct-record.json
+harness/memory/instinct-record.json
 
 # Python
 __pycache__/

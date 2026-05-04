@@ -64,7 +64,7 @@ def load_instinct(root: Optional[Path] = None) -> dict:
     """加载或初始化 instinct-record.json"""
     if root is None:
         root = find_root()
-    path = root / "harness" / "instinct" / "instinct-record.json"
+    path = root / "harness" / "memory" / "instinct-record.json"
     if path.exists():
         try:
             return json.loads(path.read_text(encoding="utf-8"))
@@ -77,7 +77,7 @@ def save_instinct(instinct: dict, root: Optional[Path] = None):
     """保存 instinct-record.json"""
     if root is None:
         root = find_root()
-    path = root / "harness" / "instinct" / "instinct-record.json"
+    path = root / "harness" / "memory" / "instinct-record.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(instinct, ensure_ascii=False, indent=2), encoding="utf-8")
 

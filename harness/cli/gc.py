@@ -2,7 +2,7 @@
 """
 知识垃圾回收 CLI — kit gc 命令。
 
-调用 GC Agent 扫描 .claude/knowledge/ 目录，输出模式漂移报告。
+调用 GC Agent 扫描 harness/knowledge/ 目录，输出模式漂移报告。
 """
 import json
 import subprocess
@@ -114,7 +114,7 @@ def generate_fallback_report(knowledge_dir: Path, output_path: Path, timestamp: 
 def main():
     target = sys.argv[1] if len(sys.argv) > 1 else "."
     root = Path(target).resolve()
-    knowledge_dir = root / ".claude" / "knowledge"
+    knowledge_dir = root / "harness" / "knowledge"
 
     if not knowledge_dir.exists():
         print(f"错误: 找不到 {knowledge_dir} 目录")

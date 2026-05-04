@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 # 添加同级的 kb_shared 到 Python path
 sys.path.insert(0, str(Path(__file__).parent))
 from kb_shared import get_sonnet_model, create_llm_client
+from instinct_updater import load_instinct
 
 
 def find_root() -> Path:
@@ -64,23 +65,12 @@ def _default_config():
             "skills_dir": "skills",
             "agents_dir": "agents",
             "rules_dir": "rules",
-            "instinct_dir": "instinct",
+            "instinct_dir": "memory",
         },
         "safety": {
             "breaker": {"max_consecutive_rejects": 3, "pause_days": 30},
         },
     }
-
-
-def load_instinct(root: Path) -> dict:
-    """加载 instinct-record.json"""
-    instinct_path = root / "harness" / "instinct" / "instinct-record.json"
-    if instinct_path.exists():
-        try:
-            return json.loads(instinct_path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            pass
-    return {"records": []}
 
 
 def get_existing_targets(instinct: dict) -> set:

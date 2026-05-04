@@ -5,7 +5,7 @@ Knowledge Lifecycle Engine — 知识生命周期可执行引擎。
 读取 knowledge/lifecycle.yaml 配置，实现：
   1. 条目成熟度检查（draft→verified→proven 升级路径）
   2. 自动衰减计时（读取 last_used 时间戳，超过阈值降级）
-  3. 跨项目引用计数（扫描 repo-index.json 中各项目的 .claude/knowledge/ 引用情况）
+  3. 跨项目引用计数（扫描 repo-index.json 中各项目的 harness/knowledge/ 引用情况）
   4. 跨项目提升提案（L3 → L1/L2）
 """
 import json
@@ -148,7 +148,7 @@ def promote_to_layer1(entry: dict, knowledge_dir: Path, config: dict) -> Path | 
 
 ## 操作步骤
 1. 将条目移动到 team-knowledge.git/tech-wiki/
-2. 更新原项目的 .claude/knowledge/INDEX.md 引用
+2. 更新原项目的 harness/knowledge/INDEX.md 引用
 3. 在团队会议中确认
 
 ## 验证

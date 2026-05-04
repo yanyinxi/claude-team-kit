@@ -33,7 +33,7 @@ def temp_project(tmp_path):
     (tmp_path / ".claude" / "data").mkdir(parents=True)
 
     # 知识库目录结构
-    knowledge_dir = tmp_path / ".claude" / "knowledge"
+    knowledge_dir = tmp_path / "harness" / "knowledge"
     for subdir in ["decision", "guideline", "pitfall", "process", "model"]:
         (knowledge_dir / subdir).mkdir(parents=True)
 
@@ -42,7 +42,7 @@ def temp_project(tmp_path):
     evolve_dir.mkdir(parents=True)
 
     # 本能记录目录
-    instinct_dir = tmp_path / "harness" / "instinct"
+    instinct_dir = tmp_path / "harness" / "memory"
     instinct_dir.mkdir(parents=True)
 
     return tmp_path
@@ -51,7 +51,7 @@ def temp_project(tmp_path):
 @pytest.fixture
 def mock_knowledge_base(temp_project):
     """创建模拟知识库数据"""
-    knowledge_dir = temp_project / ".claude" / "knowledge"
+    knowledge_dir = temp_project / "harness" / "knowledge"
 
     # pitfall 示例
     (knowledge_dir / "pitfall" / "json_encoding.json").write_text(json.dumps({
@@ -144,7 +144,7 @@ def mock_evolved_knowledge(temp_project):
 @pytest.fixture
 def mock_instinct_record(temp_project):
     """创建模拟本能记录"""
-    instinct_file = temp_project / "harness" / "instinct" / "instinct-record.json"
+    instinct_file = temp_project / "harness" / "memory" / "instinct-record.json"
     instinct_file.write_text(json.dumps({
         "records": [
             {"skill": "testing", "timestamp": "2024-01-01T00:00:00"},
@@ -455,7 +455,7 @@ class TestPaths:
         """测试路径常量定义"""
         from paths import (
             DIR_CLAUDE, DIR_DATA, DIR_SKILLS, DIR_AGENTS,
-            FILE_SESSIONS, FILE_ERRORS, FILE_INSTINCT_RECORD,
+            FILE_SESSIONS, FILE_ERRORS,
             ANTHROPIC_API_URL
         )
 

@@ -56,7 +56,7 @@ class TestConfig:
         "agent": ["agents/architect.md", "agents/backend-dev.md", "agents/debugger.md"],
         "skill": ["skills/testing/SKILL.md", "skills/debugging/SKILL.md", "skills/tdd/SKILL.md"],
         "rule": ["rules/security.md", "rules/code-style.md"],
-        "instinct": ["harness/instinct/instinct-record.json"],
+        "instinct": ["harness/memory/instinct-record.json"],
         "performance": ["rules/performance.md", "harness/_core/config.yaml"],
         "interaction": ["harness/rules/interaction.md"],
         "security": ["rules/security.md"],

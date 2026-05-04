@@ -10,9 +10,10 @@ import re
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-AGENTS_DIR = PROJECT_ROOT / "agents"
-RULES_DIR = PROJECT_ROOT / "rules"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+HARNESS_DIR = PROJECT_ROOT / "harness"
+AGENTS_DIR = HARNESS_DIR / "agents"
+RULES_DIR = HARNESS_DIR / "rules"
 
 _failures = 0
 

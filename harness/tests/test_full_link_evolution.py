@@ -18,13 +18,14 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-AGENTS_DIR = PROJECT_ROOT / "agents"
-RULES_DIR = PROJECT_ROOT / "rules"
-SKILLS_DIR = PROJECT_ROOT / "skills"
-HOOKS_DIR = PROJECT_ROOT / "hooks" / "bin"
-EVOLVE_DIR = PROJECT_ROOT / "evolve-daemon"
-KNOWLEDGE_DIR = PROJECT_ROOT / "knowledge"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+HARNESS_DIR = PROJECT_ROOT / "harness"
+AGENTS_DIR = HARNESS_DIR / "agents"
+RULES_DIR = HARNESS_DIR / "rules"
+SKILLS_DIR = HARNESS_DIR / "skills"
+HOOKS_DIR = HARNESS_DIR / "hooks" / "bin"
+EVOLVE_DIR = HARNESS_DIR / "evolve-daemon"
+KNOWLEDGE_DIR = HARNESS_DIR / "knowledge"
 
 _failures = 0
 
@@ -48,12 +49,12 @@ def test_scenario_new_project_init():
     print("\n📋 Scenario 1: 新项目初始化 (Phase 0: Context)")
 
     # Verify init tooling exists
-    init_script = PROJECT_ROOT / "cli" / "init.py"
+    init_script = HARNESS_DIR / "cli" / "init.py"
     assert init_script.exists(), "cli/init.py should exist"
     ok("cli/init.py 存在 — 自动检测技术栈")
 
     # Verify kit.sh references init
-    kit_sh = (PROJECT_ROOT / "cli" / "kit.sh").read_text()
+    kit_sh = (HARNESS_DIR / "cli" / "kit.sh").read_text()
     assert "init" in kit_sh
     ok("kit.sh 包含 init 子命令")
 
@@ -216,7 +217,7 @@ def test_dimension_correction_learning():
     ok(f"置信度分级系统: {found_levels}/4 级 (0.3→0.5→0.7→0.9)")
 
     # Verify instinct record file
-    instinct = PROJECT_ROOT / "instinct" / "instinct-record.json"
+    instinct = HARNESS_DIR / "memory" / "instinct-record.json"
     assert instinct.exists()
     ok("instinct-record.json 存在")
 
@@ -226,7 +227,7 @@ def test_dimension_correction_learning():
     ok("extract_semantics.py 存在 — 用户纠正语义提取")
 
     # Verify collect-failure hook
-    failure_collector = HOOKS_DIR / "collect-failure.py"
+    failure_collector = HOOKS_DIR / "collect_failure.py"
     assert failure_collector.exists()
     ok("collect-failure.py 存在 — 工具失败采集")
 
@@ -428,7 +429,7 @@ def test_evolution_closed_loop():
     print("\n📋 Integration: 进化闭环")
 
     # Stage 1: Collection
-    collectors = ["collect_session.py", "collect-agent.py", "collect-skill.py", "collect-failure.py"]
+    collectors = ["collect_session.py", "collect_agent.py", "collect_skill.py", "collect_failure.py"]
     for c in collectors:
         assert (HOOKS_DIR / c).exists(), f"{c} should exist"
     ok(f"Stage 1 采集: {len(collectors)} 个 Hook 脚本")

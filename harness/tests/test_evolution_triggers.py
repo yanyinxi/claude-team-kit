@@ -18,7 +18,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT / "harness" / "evolve-daemon"))
 sys.path.insert(0, str(PROJECT_ROOT / "evolve-daemon"))
 
 from daemon import check_thresholds, load_new_sessions, load_config
@@ -364,7 +365,8 @@ def test_rollback_keep_good_metrics():
     baseline = {"task_success_rate": 0.8, "user_correction_rate": 0.2,
                 "agent_failure_rate": 0.1, "satisfaction_score": 3.5}
     metrics = {"task_success_rate": 0.9, "user_correction_rate": 0.1,
-               "agent_failure_rate": 0.05, "satisfaction_score": 4.2}
+               "agent_failure_rate": 0.05, "satisfaction_score": 4.2,
+               "sample_size": 10}
     decision = evaluate_proposal(proposal, metrics, baseline)
     assert decision == "keep", f"Expected keep, got {decision}"
     ok("指标改善 → keep")
@@ -376,7 +378,8 @@ def test_rollback_degraded_success_rate():
     baseline = {"task_success_rate": 0.9, "user_correction_rate": 0.1,
                 "agent_failure_rate": 0.05, "satisfaction_score": 4.0}
     metrics = {"task_success_rate": 0.7, "user_correction_rate": 0.12,
-               "agent_failure_rate": 0.06, "satisfaction_score": 3.5}
+               "agent_failure_rate": 0.06, "satisfaction_score": 3.5,
+               "sample_size": 10}
     decision = evaluate_proposal(proposal, metrics, baseline)
     assert decision == "rollback", f"Expected rollback, got {decision}"
     ok("任务成功率下降 22% → rollback")
@@ -388,7 +391,8 @@ def test_rollback_low_satisfaction():
     baseline = {"task_success_rate": 0.85, "user_correction_rate": 0.15,
                 "agent_failure_rate": 0.08, "satisfaction_score": 4.0}
     metrics = {"task_success_rate": 0.86, "user_correction_rate": 0.14,
-               "agent_failure_rate": 0.07, "satisfaction_score": 2.1}
+               "agent_failure_rate": 0.07, "satisfaction_score": 2.1,
+               "sample_size": 10}
     decision = evaluate_proposal(proposal, metrics, baseline)
     assert decision == "rollback", f"Expected rollback, got {decision}"
     ok("满意度 2.1/5 → rollback")
@@ -437,8 +441,8 @@ def test_load_config_fallback():
         finally:
             dm.yaml = saved_yaml
     assert "thresholds" in config
-    assert config["thresholds"]["min_new_sessions"] == 5
-    assert config["thresholds"]["min_same_pattern_corrections"] == 3
+    assert config["thresholds"]["min_new_sessions"] == 1
+    assert config["thresholds"]["min_same_pattern_corrections"] == 2
     assert config["thresholds"]["max_hours_since_last_analyze"] == 6
     ok("Fallback 配置加载成功（无 PyYAML）")
 

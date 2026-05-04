@@ -1,7 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "*"
+      "*",
+      "Bash(rmdir harness/knowledge/decision/ harness/knowledge/guideline/ harness/knowledge/pitfall/ harness/knowledge/process/ harness/knowledge/model/)",
+      "Bash(mv .claude/knowledge/decision/       harness/knowledge/decision/)",
+      "Bash(mv .claude/knowledge/guideline/     harness/knowledge/guideline/)",
+      "Bash(mv .claude/knowledge/pitfall/       harness/knowledge/pitfall/)",
+      "Bash(mv .claude/knowledge/model/         harness/knowledge/model/)",
+      "Bash(mv .claude/tests/test_evolution_triggers.py      harness/tests/)",
+      "Bash(mv .claude/tests/test_full_link_evolution.py     harness/tests/)",
+      "Bash(mv .claude/tests/test_parallelism_protocol.py   harness/tests/)",
+      "Bash(rm -rf .claude/data/backups/)",
+      "Bash(rm -rf .claude/data/homunculus/)",
+      "Bash(rm -rf .claude/data/rate-limits/)",
+      "Bash(rm -rf .claude/data/worktrees/)",
+      "Bash(rm .claude/data/.session_start)"
     ],
     "defaultMode": "bypassPermissions",
     "additionalDirectories": [

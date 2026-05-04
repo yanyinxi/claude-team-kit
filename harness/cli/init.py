@@ -242,7 +242,7 @@ def generate_claude_md(root: Path, tech: dict, structure: dict) -> str:
     lines += [
         "",
         "## 相关知识",
-        "- 项目知识: `.claude/knowledge/INDEX.md`",
+        "- 项目知识: `harness/knowledge/INDEX.md`",
         "- 团队规范: `.claude/rules/`",
         "- 设计文档: `docs/`",
     ]
@@ -258,7 +258,7 @@ def create_skeleton(root: Path):
     dirs = [
         claude_dir,
         claude_dir / "rules",
-        claude_dir / "knowledge",
+        harness_dir / "knowledge",
         claude_dir / "data",
     ]
     for d in dirs:
@@ -423,7 +423,7 @@ def main():
         print(f"  🔍 [dry-run] 会生成 CLAUDE.md: {claude_path}")
         content = generate_claude_md(root, tech, structure)
         print(f"  🔍 [dry-run] 内容预览 ({content.count(chr(10))+1} 行)")
-        print(f"  🔍 [dry-run] 会创建骨架: .claude/rules/, .claude/knowledge/, .claude/data/")
+        print(f"  🔍 [dry-run] 会创建骨架: .claude/data/, .claude/proposals/")
         return
 
     if claude_path.exists() and not args.force:

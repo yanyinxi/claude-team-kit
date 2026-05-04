@@ -2,7 +2,7 @@
 """
 语义提取器 — 用 Haiku 从会话中提取用户纠正上下文。
 
-触发: collect-session.py 检测到纠正时异步调用
+触发: collect_session.py 检测到纠正时异步调用
 成本: Haiku ~$0.0001/次，可忽略
 超时: 5s 放弃，不影响下次会话
 

@@ -12,12 +12,12 @@ from instinct_updater import load_instinct, save_instinct
 
 
 def test_load_instinct_uses_harness_path():
-    """验证 load_instinct 使用 harness/instinct/ 路径"""
+    """验证 load_instinct 使用 harness/memory/ 路径"""
     with tempfile.TemporaryDirectory() as tmpdir:
         root = Path(tmpdir)
 
-        # 创建 harness/instinct/ 目录
-        instinct_dir = root / "harness" / "instinct"
+        # 创建 harness/memory/ 目录
+        instinct_dir = root / "harness" / "memory"
         instinct_dir.mkdir(parents=True)
 
         # 写入测试数据
@@ -32,7 +32,7 @@ def test_load_instinct_uses_harness_path():
 
 
 def test_save_instinct_uses_harness_path():
-    """验证 save_instinct 保存到 harness/instinct/ 路径"""
+    """验证 save_instinct 保存到 harness/memory/ 路径"""
     with tempfile.TemporaryDirectory() as tmpdir:
         root = Path(tmpdir)
 
@@ -40,7 +40,7 @@ def test_save_instinct_uses_harness_path():
         save_instinct(test_data, root)
 
         # 验证文件存在于正确位置
-        instinct_file = root / "harness" / "instinct" / "instinct-record.json"
+        instinct_file = root / "harness" / "memory" / "instinct-record.json"
         assert instinct_file.exists(), f"文件应存在于 {instinct_file}"
 
         # 验证内容正确

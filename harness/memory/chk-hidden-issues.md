@@ -16,7 +16,7 @@ type: project
 
 ### 3. 路径规范
 - Hook 脚本统一在 `harness/hooks/`
-- instinct 数据路径已统一到 `harness/instinct/`
+- instinct 数据路径已统一到 `harness/memory/`
 - agents/ 旧路径已迁移到 `harness/agents/`
 
 ### 4. 安装注意事项

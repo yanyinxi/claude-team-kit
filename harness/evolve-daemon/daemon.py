@@ -340,7 +340,7 @@ def load_config():
         "daemon": {"schedule": "*/30 * * * *", "idle_trigger_minutes": 120, "extract_timeout_seconds": 5},
         "thresholds": {"min_new_sessions": 1, "min_same_pattern_corrections": 2, "max_hours_since_last_analyze": 6},
         "safety": {"max_proposals_per_day": 3, "auto_close_days": 7, "breaker": {"max_consecutive_rejects": 3, "pause_days": 30}},
-        "paths": {"data_dir": ".claude/data", "proposals_dir": ".claude/proposals", "skills_dir": "skills", "agents_dir": "agents", "rules_dir": "rules", "instinct_dir": "instinct"},
+        "paths": {"data_dir": ".claude/data", "proposals_dir": ".claude/proposals", "skills_dir": "skills", "agents_dir": "agents", "rules_dir": "rules", "instinct_dir": "memory"},
     }
 
 
