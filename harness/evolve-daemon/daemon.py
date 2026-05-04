@@ -419,6 +419,7 @@ def run_analysis(config: dict, root: Path, sessions: list[dict]):
         pass  # 会话级进化失败不影响主流程
 
     # ── 改动：分析前过滤已知错误 ──────────────────────
+    # 覆盖两个信号源：corrections (用户纠正) + failure_stats (工具失败)
     from kb_shared import load_active_kb, is_covered_by_kb
     kb = load_active_kb(root)
     kb_by_dimension = {}
@@ -426,10 +427,16 @@ def run_analysis(config: dict, root: Path, sessions: list[dict]):
         dim = entry.get("dimension", "unknown")
         kb_by_dimension.setdefault(dim, []).append(entry)
 
-    original_count = sum(len(s.get("corrections", [])) for s in sessions)
-    filtered_sessions = []
-    filtered_total = 0
+    # 统计两个信号源
+    original_corrections = sum(len(s.get("corrections", [])) for s in sessions)
+    original_tool_failures = sum(
+        s.get("rich_context", {}).get("failure_stats", {}).get("total", 0)
+        for s in sessions
+    )
 
+    # 过滤 corrections
+    filtered_sessions = []
+    filtered_corrections = 0
     for session in sessions:
         original_corrections = session.get("corrections", [])
         new_corrections = []
@@ -437,21 +444,63 @@ def run_analysis(config: dict, root: Path, sessions: list[dict]):
             corr_text = corr.get("user_correction", "")
             covered, matched_id = is_covered_by_kb(corr_text, root)
             if covered:
-                filtered_total += 1
+                filtered_corrections += 1
             else:
                 new_corrections.append(corr)
         session["corrections"] = new_corrections
         if new_corrections:
             filtered_sessions.append(session)
 
-    if filtered_total > 0:
-        print(f"  [KB过滤] 跳过了 {filtered_total} 条已被知识库覆盖的错误")
+    # 检查 failure_stats 覆盖（按失败类型 + 工具）
+    # 双轨兼容：rich_context.failure_stats + 直接字段
+    all_failure_types = []
+    all_failure_tools = []
+    for s in sessions:
+        # 新版 rich_context 格式
+        fs = s.get("rich_context", {}).get("failure_stats", {})
+        for et in fs.get("failure_types", {}).keys():
+            all_failure_types.append(et)
+        for tool in fs.get("failure_tools", {}).keys():
+            all_failure_tools.append(tool)
+        # 兼容旧格式：直接从字段读取
+        for et in s.get("failure_types", {}).keys():
+            if et not in all_failure_types:
+                all_failure_types.append(et)
+        tf = s.get("tool_failures", 0)
+        if tf > 0:
+            all_failure_tools.append(f"unknown_tool({tf})")
 
-    if not filtered_sessions:
+    covered_failure_count = 0
+    for ft in all_failure_types:
+        covered, _ = is_covered_by_kb(ft, root)
+        if covered:
+            covered_failure_count += 1
+    for ft in all_failure_tools:
+        covered, _ = is_covered_by_kb(ft, root)
+        if covered:
+            covered_failure_count += 1
+
+    total_filtered = filtered_corrections + covered_failure_count
+
+    if total_filtered > 0:
+        print(f"  [KB过滤] corrections: {filtered_corrections}, failure_stats: {covered_failure_count}, 总计: {total_filtered}")
+
+    # ── BUG 修复：不能仅凭 corrections 为空就跳过分析 ──────────────────
+    # analyzer.py 有双轨信号：corrections + rich_context.failure_stats
+    # failure_stats 中的失败类型（如 tool:not_found_error）也需要分析
+    # 必须检查：会话是否还有 failure_stats 数据
+    has_any_failure_stats = any(
+        s.get("rich_context", {}).get("failure_stats", {}).get("total", 0) > 0
+        for s in sessions
+    )
+    if not filtered_sessions and not has_any_failure_stats:
         print("所有错误已被知识库覆盖，跳过 daemon 分析")
         return
+    elif not filtered_sessions and has_any_failure_stats:
+        print(f"  [KB过滤] corrections 已全部覆盖，但仍有 failure_stats 需要分析")
 
-    sessions = filtered_sessions
+    if filtered_sessions:
+        sessions = filtered_sessions
 
     # ── 原有流程 ───────────────────────────────────
     # 1. 语义提取（每个新会话）

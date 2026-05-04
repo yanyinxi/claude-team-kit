@@ -4,7 +4,7 @@
 set -uo pipefail
 
 PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RATE_DIR="${PLUGIN_ROOT}/../.claude/data/rate-limits"
+RATE_DIR="${PLUGIN_ROOT}/../../.claude/data/rate-limits"
 mkdir -p "$RATE_DIR"
 STATE_FILE="${RATE_DIR}/state.json"
 

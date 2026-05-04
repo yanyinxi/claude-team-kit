@@ -46,24 +46,35 @@ def aggregate_and_analyze(sessions: list[dict], config: dict, root: Path) -> dic
                 "correction": c.get("user_correction", ""),
             })
 
-    # 统计工具失败
-    # 从 rich_context.failure_stats.failure_types 读取
+    # 统计工具失败（双轨：rich_context.failure_stats + 直接字段）
+    # 优先从 rich_context.failure_stats 读取（新版格式）
     for s in sessions:
         rich_ctx = s.get("rich_context", {})
         failure_stats = rich_ctx.get("failure_stats", {})
         failures = failure_stats.get("failure_types", {})
         for error_type, count in failures.items():
-            if count >= 1:  # 有任何失败都记录
+            if count >= 1:
                 correction_targets[f"tool:{error_type}"] += count
+        # 兼容旧格式：从直接字段读取（rich_context 可能为空）
+        direct_failures = s.get("failure_types", {})
+        for error_type, count in direct_failures.items():
+            if count >= 1:
+                # 避免重复计数（只在 rich_context 为空时计入）
+                key = f"tool:{error_type}"
+                if not failures:
+                    correction_targets[key] += count
 
     tool_failures: Counter = Counter()
     for s in sessions:
-        # 从 rich_context.failure_stats.total 或直接字段获取
         rich_ctx = s.get("rich_context", {})
         failure_stats = rich_ctx.get("failure_stats", {})
         failures = failure_stats.get("failure_tools", {})
         for tool, count in failures.items():
             tool_failures[tool] += count
+        # 兼容旧格式：从 tool_failures 直接字段读取
+        direct_tool_failures = s.get("tool_failures", 0)
+        if direct_tool_failures > 0 and not failures:
+            tool_failures["unknown_tool"] += direct_tool_failures
 
     # 统计技能使用
     skill_usage: Counter = Counter()
