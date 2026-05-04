@@ -60,6 +60,7 @@ htmlcov/
 tmp/
 *.tmp
 harness/.claude/data/rate-limits/
+harness/harness/
 
 # 知识库备份文件
 *.bak
