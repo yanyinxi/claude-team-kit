@@ -10,18 +10,13 @@ from pathlib import Path
 
 # 导入共享工具模块
 sys.path.insert(0, str(Path(__file__).parent))
-from _session_utils import get_session_id, get_project_root, get_data_dir, write_log_record, get_current_timestamp
+from _session_utils import get_session_id, get_project_root, get_data_dir, write_log_record, get_current_timestamp, load_hook_context
 
 
 def main():
     root = get_project_root()
     session_id = get_session_id(root)
-
-    raw = sys.stdin.read().strip()
-    try:
-        hook_data = json.loads(raw) if raw else {}
-    except (json.JSONDecodeError, OSError):
-        hook_data = {}
+    hook_data = load_hook_context()
 
     record = {
         "skill": hook_data.get("tool_input", {}).get("skill", hook_data.get("skill", "unknown")),

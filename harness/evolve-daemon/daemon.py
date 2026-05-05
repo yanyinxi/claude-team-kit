@@ -266,6 +266,13 @@ def _health_check() -> dict:
     return {"healthy": is_healthy, "checks": checks, "message": message}
 
 
+def _ensure_config_backup(root: Path):
+    """确保配置文件已备份（共享逻辑）"""
+    config_path = Path(__file__).parent / "config.yaml"
+    backup_dir = root / ".claude/data/backups"
+    _backup_config(config_path, backup_dir, max_backups=5)
+
+
 def _backup_config(config_path: Path, backup_dir: Path, max_backups: int = 5) -> str | None:
     """
     备份配置文件
@@ -803,9 +810,7 @@ def main():
 
     elif cmd == "run":
         # 外部触发模式 - 启动前自动备份配置
-        config_path = Path(__file__).parent / "config.yaml"
-        backup_dir = root / ".claude/data/backups"
-        _backup_config(config_path, backup_dir, max_backups=5)
+        _ensure_config_backup(root)
 
         triggers = check_thresholds(sessions, config, last_analyze_time)
         if not triggers:
@@ -844,9 +849,7 @@ def main():
 
     elif cmd == "start":
         # 内置调度器模式 - 启动前自动备份配置
-        config_path = Path(__file__).parent / "config.yaml"
-        backup_dir = root / ".claude/data/backups"
-        _backup_config(config_path, backup_dir, max_backups=5)
+        _ensure_config_backup(root)
 
         from scheduler import _manager
         result = _manager.start()
