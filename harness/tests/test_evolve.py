@@ -26,7 +26,9 @@ EVOLVE_DIR = PROJECT_ROOT / "harness" / "evolve-daemon"
 os.environ["CLAUDE_PROJECT_DIR"] = str(PROJECT_ROOT)
 
 # 将 evolve-daemon 和 knowledge 加入 path
+# 注意：harness/ 也需要加入（_find_root.py 在那里）
 sys.path.insert(0, str(EVOLVE_DIR))
+sys.path.insert(0, str(PROJECT_ROOT / "harness"))
 sys.path.insert(0, str(PROJECT_ROOT / "harness" / "knowledge"))
 
 PASS = 0
