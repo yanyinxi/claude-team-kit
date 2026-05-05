@@ -28,13 +28,22 @@
 
 ---
 
-## 二、仍未修复的问题
-
-### 🔴 高优先级
+## 二、修复进度总览
 
 | # | 问题 | 涉及文件 | 估计行数 | 状态 |
 |---|------|---------|---------|------|
-| B | LLM API 调用模式重复（4 处约 120 行） | extract_semantics, proposer, llm_decision, generalize | ~120 | 🔲 未修复（高风险，各文件逻辑差异大，强拆可能引入 bug） |
+| A | sessions.jsonl 加载统一 | 8 个文件 | ~80 | ✅ 已修复 |
+| B | LLM API 调用模式重复 | 4 处 | ~120 | 🔲 未修复（高风险） |
+| C | classify_error_type 重复 | 2 处 | ~16 | ✅ 已修复 |
+| D | stdin JSON 解析重复 | 6 个 collect_*.py | ~24 | ✅ 已修复 |
+| E | 异常静默处理模式 | 7 个 hook | ~84 | 🔲 设计选择不改 |
+| F | graceful_shutdown/restart 重复 | daemon.py | ~20 | ✅ 已修复 |
+| G | parse_iso_time 同文件重复 | analyzer.py | ~12 | ✅ 已修复 |
+| H | _path() 重复（未使用） | 3 个 evolution | ~12 | ✅ 已修复 |
+| I | conftest.py 缺失 | tests/ | - | ✅ 已修复 |
+| J | kb_shared.py 职责过重 | kb_shared.py | - | 🔲 低优先级 |
+
+**完成：8/10 ✅ | 剩余：2 项（1 高风险 + 1 低优先级）**
 
 ---
 
@@ -45,6 +54,9 @@
 | `read_jsonl` 容错性 | kb_shared.py | 跳过损坏行，避免 JSONL 部分损坏导致整文件读取失败 |
 | `test_evolution_triggers.py` sys.path | test_evolution_triggers.py | 添加 `os.environ["CLAUDE_PROJECT_DIR"]` + `harness/` 到 sys.path |
 | 幽灵目录根因 | test_evolve.py | patch `find_root` 而非 `Path` |
+| stdin 解析统一 | collect_agent/skill.py | 改用 `load_hook_context()` |
+| 配置备份去重 | daemon.py | 提取 `_ensure_config_backup()` |
+| conftest.py 新建 | tests/conftest.py | 新建共享 fixtures，提供 `make_session/make_correction/get_module` |
 
 ---
 
