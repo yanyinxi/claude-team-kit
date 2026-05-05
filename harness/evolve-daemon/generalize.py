@@ -15,7 +15,6 @@ generalize.py — LLM 泛化判断逻辑
 """
 import json
 import os
-from _load_env import load_env as _load_env; _load_env()
 from datetime import datetime
 from pathlib import Path
 from typing import Optional

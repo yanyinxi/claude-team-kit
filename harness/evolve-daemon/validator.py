@@ -26,6 +26,7 @@ from harness._core.exceptions import handle_exception, safe_execute
 logger = logging.getLogger(__name__)
 
 
+import kb_shared
 from _daemon_config import load_config, _default_config
 from _find_root import find_root
 
@@ -86,7 +87,7 @@ def validate_sessions_file(sessions_file: Path, quarantine_dir: Optional[Path] =
     if not sessions_file.exists():
         return {"total": 0, "valid": 0, "invalid": 0, "quarantined": 0, "errors": []}
 
-    valid_lines = []
+    valid_sessions = []
     invalid_lines = []
     errors = []
 
@@ -107,7 +108,7 @@ def validate_sessions_file(sessions_file: Path, quarantine_dir: Optional[Path] =
                 is_valid, error_msg = validate_session(session)
 
                 if is_valid:
-                    valid_lines.append(line)
+                    valid_sessions.append(session)
                 else:
                     invalid_lines.append((i, line, error_msg))
                     errors.append(f"Line {i + 1}: {error_msg}")
@@ -129,9 +130,12 @@ def validate_sessions_file(sessions_file: Path, quarantine_dir: Optional[Path] =
                     quarantined_count += 1
 
         # 覆写有效数据（原子操作：先写临时文件，再重命名）
-        if valid_lines:
+        if valid_sessions:
             temp_file = sessions_file.with_suffix(".jsonl.tmp")
-            temp_file.write_text("\n".join(valid_lines) + "\n", encoding="utf-8")
+            temp_file.write_text(
+                "\n".join(json.dumps(s, ensure_ascii=False) for s in valid_sessions) + "\n",
+                encoding="utf-8"
+            )
             temp_file.replace(sessions_file)
         else:
             # 空文件也用原子操作
@@ -139,7 +143,7 @@ def validate_sessions_file(sessions_file: Path, quarantine_dir: Optional[Path] =
 
         return {
             "total": total,
-            "valid": len(valid_lines),
+            "valid": len(valid_sessions),
             "invalid": len(invalid_lines),
             "quarantined": quarantined_count,
             "errors": errors,
@@ -165,33 +169,28 @@ def clean_old_sessions(sessions_file: Path, max_age_days: int = 90) -> dict:
         return {"cleaned": 0, "kept": 0}
 
     cutoff = datetime.now() - __import__("datetime").timedelta(days=max_age_days)
-    kept_lines = []
+    kept_sessions = []
     cleaned = 0
 
     try:
-        content = sessions_file.read_text().strip()
-        if not content:
-            return {"cleaned": 0, "kept": 0}
-
-        for line in content.splitlines():
-            if not line.strip():
-                continue
-
+        sessions = kb_shared.read_jsonl(sessions_file)
+        for session in sessions:
             try:
-                session = json.loads(line)
                 session_time = datetime.fromisoformat(session.get("timestamp", "2000-01-01"))
-
                 if session_time >= cutoff:
-                    kept_lines.append(line)
+                    kept_sessions.append(session)
                 else:
                     cleaned += 1
-            except (json.JSONDecodeError, ValueError):
+            except (ValueError, TypeError):
                 cleaned += 1
 
         # 原子写入：先写临时文件，再重命名
-        if kept_lines:
+        if kept_sessions:
             temp_file = sessions_file.with_suffix(".jsonl.tmp")
-            temp_file.write_text("\n".join(kept_lines) + "\n", encoding="utf-8")
+            temp_file.write_text(
+                "\n".join(json.dumps(s, ensure_ascii=False) for s in kept_sessions) + "\n",
+                encoding="utf-8"
+            )
             temp_file.replace(sessions_file)
         else:
             sessions_file.write_text("", encoding="utf-8")
@@ -199,7 +198,7 @@ def clean_old_sessions(sessions_file: Path, max_age_days: int = 90) -> dict:
     except OSError as e:
         handle_exception(e, f"清理旧会话失败: {sessions_file}", default_return={"cleaned": 0, "kept": 0}, log_level="warning")
 
-    return {"cleaned": cleaned, "kept": len(kept_lines)}
+    return {"cleaned": cleaned, "kept": len(kept_sessions)}
 
 
 def get_data_quality_stats(sessions_file: Path) -> dict:

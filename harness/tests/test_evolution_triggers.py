@@ -19,6 +19,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+os.environ["CLAUDE_PROJECT_DIR"] = str(PROJECT_ROOT)
+sys.path.insert(0, str(PROJECT_ROOT / "harness"))
 sys.path.insert(0, str(PROJECT_ROOT / "harness" / "evolve-daemon"))
 sys.path.insert(0, str(PROJECT_ROOT / "evolve-daemon"))
 

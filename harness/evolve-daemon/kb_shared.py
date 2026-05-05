@@ -21,21 +21,66 @@ from pathlib import Path
 from typing import Optional
 
 
+# ── Claude Code 配置自动加载 ────────────────────────────────
+_env_loaded = False
+
+
+def _ensure_env_loaded():
+    """从 Claude Code 配置自动加载环境变量（幂等，所有 LLM 模块共享）
+
+    自动读取 ~/.claude/settings.json 的 env 配置，
+    让 evolve-daemon 复用 Claude Code 的 API 代理，无需手动配置。
+    """
+    global _env_loaded
+    if _env_loaded:
+        return
+    _env_loaded = True
+
+    settings_path = Path.home() / ".claude" / "settings.json"
+    if not settings_path.exists():
+        return
+
+    try:
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+        for key, value in settings.get("env", {}).items():
+            os.environ.setdefault(key, str(value))
+    except (json.JSONDecodeError, OSError):
+        pass
+
+
 # ── 统一模型配置 ─────────────────────────────────────────────
+# 所有模型选择统一由 ANTHROPIC_MODEL 环境变量控制
+#   - 设置了 ANTHROPIC_MODEL → 所有模型都用这个值
+#   - 未设置 → extract 用 Haiku，analyze/decide 用 Sonnet
+_MODEL_ENV = "ANTHROPIC_MODEL"
+_DEFAULT_HAIKU = "claude-haiku-4-5-20251001"
+_DEFAULT_SONNET = "claude-sonnet-4-6-20250514"
+
+
+def get_model() -> str | None:
+    """获取统一模型（ANTHROPIC_MODEL），无则返回 None"""
+    return os.environ.get(_MODEL_ENV)
+
+
 def get_haiku_model() -> str:
-    return os.environ.get("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+    """快速分类模型：有 ANTHROPIC_MODEL 用它，否则用默认 Haiku"""
+    return os.environ.get(_MODEL_ENV) or _DEFAULT_HAIKU
+
 
 def get_sonnet_model() -> str:
-    return os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6-20250514")
+    """深度分析模型：有 ANTHROPIC_MODEL 用它，否则用默认 Sonnet"""
+    return os.environ.get(_MODEL_ENV) or _DEFAULT_SONNET
+
 
 def get_llm_config() -> dict:
     """统一 LLM 配置参数，所有模块引用此处"""
-    model = os.environ.get("ANTHROPIC_MODEL")
+    _ensure_env_loaded()
+    unified = os.environ.get(_MODEL_ENV)
     return {
-        # 模型
-        "extract_model": model or "claude-haiku-4-5-20251001",
-        "analyze_model": model or "claude-sonnet-4-6-20250514",
-        "decide_model": model or "claude-sonnet-4-6-20250514",
+        # 模型（统一由 ANTHROPIC_MODEL 控制）
+        "extract_model": unified or _DEFAULT_HAIKU,
+        "analyze_model": unified or _DEFAULT_SONNET,
+        "decide_model": unified or _DEFAULT_SONNET,
         # Haiku 参数（快速分类）
         "extract_max_tokens": 8192,
         "extract_temperature": 0.1,
@@ -52,6 +97,7 @@ def get_llm_config() -> dict:
 def create_llm_client() -> "Anthropic":
     """创建统一的 LLM 客户端"""
     from anthropic import Anthropic
+    _ensure_env_loaded()
     cfg = get_llm_config()
     return Anthropic(api_key=cfg["api_key"], base_url=cfg["base_url"])
 
@@ -91,13 +137,27 @@ def days_ago(days: int) -> str:
     return (datetime.now() - timedelta(days=days)).isoformat()
 
 
+# ── sessions.jsonl 统一加载 ───────────────────────────────────
+def load_sessions(data_dir: Path) -> list[dict]:
+    """读取 sessions.jsonl，统一所有模块的会话加载逻辑"""
+    return read_jsonl(data_dir / "sessions.jsonl")
+
+
 # ── JSONL 工具 ─────────────────────────────────────────────
 def read_jsonl(path: Path) -> list[dict]:
-    """读取 JSONL 文件，返回 list[dict]"""
+    """读取 JSONL 文件，返回 list[dict]（跳过损坏行）"""
     if not path.exists():
         return []
+    results = []
     with open(path, encoding="utf-8") as f:
-        return [json.loads(line) for line in f if line.strip()]
+        for line in f:
+            if not line.strip():
+                continue
+            try:
+                results.append(json.loads(line))
+            except (json.JSONDecodeError, ValueError):
+                pass
+    return results
 
 
 def append_jsonl(path: Path, entry: dict):

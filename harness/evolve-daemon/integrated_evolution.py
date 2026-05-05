@@ -21,7 +21,6 @@ integrated_evolution.py — 会话级进化引擎（重写版）
 import json
 import os
 import sys
-from _load_env import load_env as _load_env; _load_env()
 from datetime import datetime
 from pathlib import Path
 
@@ -41,6 +40,7 @@ from kb_shared import (
     check_merge_cooldown,
     notify_llm_failure,
     now_iso,
+    get_llm_config,
 )
 from generalize import process_errors
 
@@ -168,14 +168,17 @@ def run_session_evolution(max_errors: int = 10, max_age_hours: int = 24):
 
     # ── 步骤4：LLM 泛化分析 ──────────────────────────
     print(f"\n  [LLM] 调用泛化分析...")
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
 
     try:
         results = process_errors(unknown_errors, PROJECT_ROOT, config=_load_config())
     except Exception as e:
         print(f"  [错误] 泛化分析失败: {e}")
-        if api_key:
-            notify_llm_failure(str(e), f"{len(unknown_errors)} 个错误分析失败", "")
+        try:
+            cfg = get_llm_config()
+            if cfg.get("api_key") and cfg["api_key"] != "PROXY_MANAGED":
+                notify_llm_failure(str(e), f"{len(unknown_errors)} 个错误分析失败", "")
+        except Exception:
+            pass
         return
 
     # ── 步骤5：汇总结果 ───────────────────────────────

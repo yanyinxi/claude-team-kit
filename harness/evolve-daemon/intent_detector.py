@@ -14,6 +14,8 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import kb_shared
+
 
 def detect_intent_failures(sessions_dir: Path, threshold: float = 0.30) -> list:
     """
@@ -27,7 +29,7 @@ def detect_intent_failures(sessions_dir: Path, threshold: float = 0.30) -> list:
         List of detected intent failure records
     """
     failures = []
-    sessions = _load_sessions(sessions_dir)
+    sessions = kb_shared.load_sessions(sessions_dir)
 
     for session in sessions:
         # Pattern 1: Agent claimed completion but user edited heavily
@@ -58,19 +60,6 @@ def detect_intent_failures(sessions_dir: Path, threshold: float = 0.30) -> list:
                 })
 
     return failures
-
-
-def _load_sessions(sessions_dir: Path) -> list:
-    sessions = []
-    sessions_file = sessions_dir / "sessions.jsonl"
-    if not sessions_file.exists():
-        return sessions
-    for line in sessions_file.read_text().splitlines():
-        try:
-            sessions.append(json.loads(line))
-        except json.JSONDecodeError:
-            continue
-    return sessions
 
 
 def _agent_claimed_done(session: dict) -> bool:
@@ -122,7 +111,7 @@ def analyze_intent_trends(sessions_dir: Path, days: int = 30) -> dict:
     Returns counts and trends for dashboard display.
     """
     cutoff = (datetime.now() - timedelta(days=days)).isoformat()
-    sessions = _load_sessions(sessions_dir)
+    sessions = kb_shared.load_sessions(sessions_dir)
 
     recent = [s for s in sessions if s.get("timestamp", "") >= cutoff]
     failures = detect_intent_failures(sessions_dir)

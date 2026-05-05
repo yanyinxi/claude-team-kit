@@ -46,6 +46,7 @@ from datetime import datetime, timedelta
 logger = logging.getLogger(__name__)
 
 from _find_root import find_root
+import kb_shared
 
 
 def handle_exception(e, context, reraise=False, default_return=None, log_level="error"):
@@ -348,19 +349,7 @@ def load_config():
 
 def load_new_sessions(data_dir: Path, last_analyzed_id: str | None = None) -> list[dict]:
     """加载自上次分析以来的新会话"""
-    sessions_file = data_dir / "sessions.jsonl"
-    if not sessions_file.exists():
-        return []
-
-    sessions = []
-    with open(sessions_file, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                try:
-                    sessions.append(json.loads(line))
-                except json.JSONDecodeError:
-                    continue
+    sessions = kb_shared.load_sessions(data_dir)
 
     if last_analyzed_id:
         try:

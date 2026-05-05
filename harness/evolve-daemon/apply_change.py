@@ -20,6 +20,7 @@ from typing import Optional
 
 from _daemon_config import load_config, _default_config
 from _find_root import find_root
+import kb_shared
 
 
 def backup_file(file_path: Path, backups_dir: Path, decision_id: str) -> Optional[Path]:
@@ -198,18 +199,8 @@ def record_proposal(decision: dict, root: Path, backup_path: Optional[Path] = No
 
 def _collect_baseline_metrics(root: Path) -> dict:
     """收集基线指标（用于后续验证对比）"""
-    sessions_file = root / ".claude" / "data" / "sessions.jsonl"
-
-    if not sessions_file.exists():
-        return {}
-
-    sessions = []
-    for line in sessions_file.read_text().splitlines():
-        if line.strip():
-            try:
-                sessions.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue
+    data_dir = root / ".claude" / "data"
+    sessions = kb_shared.load_sessions(data_dir)
 
     if not sessions:
         return {}

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # 添加同级的 kb_shared 到 Python path
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
-from kb_shared import get_sonnet_model, create_llm_client, get_llm_config
+from kb_shared import get_sonnet_model, create_llm_client, get_llm_config, load_sessions
 from instinct_updater import load_instinct
 from _find_root import find_root
 
@@ -391,16 +391,7 @@ if __name__ == "__main__":
         # 读取最近的 sessions
         root = find_root()
         data_dir = root / ".claude" / "data"
-        sessions_file = data_dir / "sessions.jsonl"
-
-        sessions = []
-        if sessions_file.exists():
-            for line in sessions_file.read_text().splitlines():
-                if line.strip():
-                    try:
-                        sessions.append(json.loads(line))
-                    except json.JSONDecodeError:
-                        continue
+        sessions = load_sessions(data_dir)
 
         # 模拟 analysis（实际应该从 analyzer 获取）
         from analyzer import aggregate_and_analyze

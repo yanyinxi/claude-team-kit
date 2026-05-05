@@ -10,10 +10,11 @@
   - 建议必须具体、可执行（精确到文件的章节/步骤）
   - 必须评估风险
   - 不修改文件，只生成提案
+
 """
+
 import json
 import logging
-import os
 import sys
 from pathlib import Path
 from datetime import datetime
@@ -28,8 +29,8 @@ _kb_root = Path(__file__).parent
 if str(_kb_root) not in sys.path:
     sys.path.insert(0, str(_kb_root))
 
-from harness._core.exceptions import handle_exception, safe_execute
-from kb_shared import get_sonnet_model, create_llm_client
+from harness._core.exceptions import handle_exception
+from kb_shared import create_llm_client, get_llm_config
 
 logger = logging.getLogger(__name__)
 
@@ -37,20 +38,23 @@ logger = logging.getLogger(__name__)
 def generate_proposal(analysis: dict, config: dict, root: Path) -> Path:
     """
     生成改进提案。调用 Claude API 进行深度分析。
-    如果 API Key 未配置，降级为模板提案。
+    底层使用 kb_shared.get_llm_config()，所有 LLM 调用路径统一。
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-
-    if api_key:
-        try:
-            return _generate_with_claude(analysis, config, root, api_key)
-        except Exception as e:
-            handle_exception(e, "Claude API 生成提案失败，降级为模板", log_level="warning")
+    try:
+        return _generate_with_claude(analysis, config, root)
+    except Exception as e:
+        handle_exception(e, "Claude API 生成提案失败，降级为模板", log_level="warning")
 
     return _generate_from_template(analysis, config, root)
 
 
-def _call_claude_api(api_key: str, model: str, system_prompt: str, user_message: str, max_tokens: int, temperature: float) -> str | None:
+def _call_claude_api(
+    model: str,
+    system_prompt: str,
+    user_message: str,
+    max_tokens: int,
+    temperature: float,
+) -> str | None:
     """调用 Claude API — 优先使用统一 SDK 客户端，降级为 REST API"""
     # 方案 1: 使用统一 SDK 客户端
     try:
@@ -62,10 +66,9 @@ def _call_claude_api(api_key: str, model: str, system_prompt: str, user_message:
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}],
         )
-        # 提取文本内容（跳过 thinking block，处理 ```json 包裹）
         text = ""
         for block in response.content:
-            if hasattr(block, 'text') and block.text:
+            if hasattr(block, "text") and block.text:
                 text = block.text.strip()
                 break
         if not text:
@@ -77,25 +80,25 @@ def _call_claude_api(api_key: str, model: str, system_prompt: str, user_message:
     except Exception:
         pass
 
-    # 方案 2: 使用标准库 urllib 直接调 REST API（零外部依赖）
+    # 方案 2: 标准库 REST API（降级，使用统一配置）
     try:
         import urllib.request
-        import urllib.error
 
-        body = json.dumps({
-            "model": model,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "system": system_prompt,
-            "messages": [{"role": "user", "content": user_message}],
-        }).encode("utf-8")
-
-        base_url = os.environ.get("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
+        cfg = get_llm_config()
+        body = json.dumps(
+            {
+                "model": model,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+                "system": system_prompt,
+                "messages": [{"role": "user", "content": user_message}],
+            }
+        ).encode("utf-8")
         req = urllib.request.Request(
-            f"{base_url}/v1/messages",
+            f"{cfg['base_url']}/v1/messages",
             data=body,
             headers={
-                "x-api-key": api_key,
+                "x-api-key": cfg["api_key"],
                 "anthropic-version": "2023-06-01",
                 "content-type": "application/json",
             },
@@ -107,7 +110,7 @@ def _call_claude_api(api_key: str, model: str, system_prompt: str, user_message:
         return None
 
 
-def _generate_with_claude(analysis: dict, config: dict, root: Path, api_key: str) -> Path:
+def _generate_with_claude(analysis: dict, config: dict, root: Path) -> Path:
     """使用 Claude API 生成高质量提案"""
     api_config = config["claude_api"]
 
@@ -145,7 +148,6 @@ def _generate_with_claude(analysis: dict, config: dict, root: Path, api_key: str
     user_message = json.dumps(analysis, ensure_ascii=False, indent=2)
 
     content = _call_claude_api(
-        api_key=api_key,
         model=api_config["analyze_model"],
         system_prompt=system_prompt,
         user_message=user_message,
@@ -201,7 +203,9 @@ def _generate_from_template(analysis: dict, config: dict, root: Path) -> Path:
 def _save_proposal(content: str, analysis: dict, config: dict, root: Path) -> Path:
     """保存提案文件"""
     date_str = datetime.now().strftime("%Y-%m-%d")
-    target = analysis.get("primary_target", "general").replace(":", "-").replace("/", "-")
+    target = (
+        analysis.get("primary_target", "general").replace(":", "-").replace("/", "-")
+    )
 
     proposals_dir = root / config["paths"]["proposals_dir"]
     proposals_dir.mkdir(parents=True, exist_ok=True)
@@ -210,15 +214,24 @@ def _save_proposal(content: str, analysis: dict, config: dict, root: Path) -> Pa
     proposal_path.write_text(content, encoding="utf-8")
 
     # 记录到 instinct（待观察状态）
-    _record_to_instinct(analysis, proposal_path, confidence=0.5, source="proposal-generated", root=root)
+    _record_to_instinct(
+        analysis, proposal_path, confidence=0.5, source="proposal-generated", root=root
+    )
 
     return proposal_path
 
 
-def _record_to_instinct(analysis: dict, proposal_path: Path, confidence: float, source: str, root: Path = None):
+def _record_to_instinct(
+    analysis: dict,
+    proposal_path: Path,
+    confidence: float,
+    source: str,
+    root: Path = None,
+):
     """将提案内容记录到 instinct-record.json"""
     try:
         from instinct_updater import add_pattern
+
         hotspots = analysis.get("correction_hotspots", {})
         if hotspots:
             top_target = sorted(hotspots.items(), key=lambda x: -x[1])[0][0]
@@ -244,15 +257,18 @@ def mark_proposal_accepted(proposal_path: Path, root: Path):
     """
     try:
         from instinct_updater import add_pattern
+
         content = proposal_path.read_text(encoding="utf-8")
         # 提取建议中的核心内容
         import re
+
         matches = re.findall(r"文件:\s*(\S+)", content)
         if matches:
             target = matches[0]
         else:
             # 尝试从文件名提取：proposal_xxx.md -> xxx
             import re
+
             name_match = re.search(r"proposal_(.+?)\.md", str(proposal_path.name))
             target = name_match.group(1) if name_match else "unknown"
         record_id = add_pattern(

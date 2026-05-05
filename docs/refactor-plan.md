@@ -32,28 +32,38 @@
 
 ### 🔴 高优先级（建议尽快处理）
 
-| # | 问题 | 涉及文件 | 估计行数 |
-|---|------|---------|---------|
-| A | sessions.jsonl 加载重复（8 处各自内联实现） | daemon, apply_change, llm_decision, rollback, extract_semantics, intent_detector, validator, analyzer | ~80 |
-| B | LLM API 调用模式重复（4 处约 120 行） | extract_semantics, proposer, llm_decision, generalize | ~120 |
-| C | `classify_error_type()` 重复（2 处） | collect_session.py, collect_failure.py | ~16 |
-| D | stdin JSON 解析重复（6 个 collect_*.py） | hooks/bin/*.py | ~24 |
+| # | 问题 | 涉及文件 | 估计行数 | 状态 |
+|---|------|---------|---------|------|
+| A | sessions.jsonl 加载重复（8 处各自内联实现） | daemon, apply_change, llm_decision, rollback, extract_semantics, intent_detector, validator, analyzer | ~80 | ✅ 已修复（统一到 kb_shared.load_sessions + read_jsonl） |
+| B | LLM API 调用模式重复（4 处约 120 行） | extract_semantics, proposer, llm_decision, generalize | ~120 | 🔲 未修复 |
+| C | `classify_error_type()` 重复（2 处） | collect_session.py, collect_failure.py | ~16 | 🔲 未修复 |
+| D | stdin JSON 解析重复（6 个 collect_*.py） | hooks/bin/*.py | ~24 | 🔲 未修复 |
 
 ### 🟡 中优先级
 
-| # | 问题 | 涉及文件 | 估计行数 |
-|---|------|---------|---------|
-| E | 异常静默处理模式重复（7 个 hook） | hooks/bin/*.py | ~84 |
-| F | `daemon.py` `graceful_shutdown()` / `graceful_restart()` 重复 | daemon.py | ~20 |
-| G | `analyzer.py` `parse_iso_time()` 同文件重复定义 | analyzer.py | ~12 |
-| H | 进化函数 `_path()` 重复（3 个 evolution 文件） | skill/agent/rule_evolution.py | ~12 |
+| # | 问题 | 涉及文件 | 估计行数 | 状态 |
+|---|------|---------|---------|------|
+| E | 异常静默处理模式重复（7 个 hook） | hooks/bin/*.py | ~84 | 🔲 未修复 |
+| F | `daemon.py` `graceful_shutdown()` / `graceful_restart()` 重复 | daemon.py | ~20 | 🔲 未修复 |
+| G | `analyzer.py` `parse_iso_time()` 同文件重复定义 | analyzer.py | ~12 | 🔲 未修复 |
+| H | 进化函数 `_path()` 重复（3 个 evolution 文件） | skill/agent/rule_evolution.py | ~12 | 🔲 未修复 |
 
 ### 🟢 低优先级
 
-| # | 问题 | 涉及文件 |
-|---|------|---------|
-| I | 测试 `conftest.py` 缺失共享 fixture | tests/ |
-| J | `kb_shared.py` 职责过重（7 种功能混在一起） | kb_shared.py |
+| # | 问题 | 涉及文件 | 状态 |
+|---|------|---------|------|
+| I | 测试 `conftest.py` 缺失共享 fixture | tests/ | 🔲 未修复 |
+| J | `kb_shared.py` 职责过重（7 种功能混在一起） | kb_shared.py | 🔲 未修复 |
+
+---
+
+## 六、额外修复（迭代过程中发现）
+
+| 修复内容 | 文件 | 说明 |
+|---------|------|------|
+| `read_jsonl` 容错性 | kb_shared.py | 跳过损坏行，避免 JSONL 部分损坏导致整文件读取失败 |
+| `test_evolution_triggers.py` sys.path | test_evolution_triggers.py | 添加 `os.environ["CLAUDE_PROJECT_DIR"]` + `harness/` 到 sys.path |
+| 幽灵目录根因 | test_evolve.py | patch `find_root` 而非 `Path` |
 
 ---
 

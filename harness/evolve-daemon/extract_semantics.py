@@ -19,7 +19,7 @@ from pathlib import Path
 # 添加同级的 kb_shared 到 Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent))
-from kb_shared import get_haiku_model, create_llm_client, get_llm_config
+from kb_shared import get_haiku_model, create_llm_client, get_llm_config, read_jsonl
 from _find_root import find_root as get_project_root
 
 
@@ -148,20 +148,17 @@ def analyze_session(session: dict, root: Path | None = None) -> dict:
     # 回填 sessions.jsonl
     try:
         if sessions_file.exists():
-            lines = sessions_file.read_text(encoding="utf-8").strip().splitlines()
+            sessions = read_jsonl(sessions_file)
             updated = False
-            new_lines = []
-            for line in lines:
-                try:
-                    s = json.loads(line)
-                    if s.get("session_id") == session_id:
-                        s["corrections"] = corrections
-                        updated = True
-                    new_lines.append(json.dumps(s, ensure_ascii=False))
-                except json.JSONDecodeError:
-                    new_lines.append(line)
+            for s in sessions:
+                if s.get("session_id") == session_id:
+                    s["corrections"] = corrections
+                    updated = True
             if updated:
-                sessions_file.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+                sessions_file.write_text(
+                    "\n".join(json.dumps(s, ensure_ascii=False) for s in sessions) + "\n",
+                    encoding="utf-8"
+                )
     except Exception:
         pass  # 回填失败不影响主流程
 
@@ -223,13 +220,13 @@ def main():
         print("sessions.jsonl not found")
         return
 
-    lines = sessions_file.read_text(encoding="utf-8").strip().splitlines()
-    if not lines:
+    sessions = read_jsonl(sessions_file)
+    if not sessions:
         print("No sessions found")
         return
 
     # 分析最后一个会话
-    session = json.loads(lines[-1])
+    session = sessions[-1]
     result = analyze_session(session, root)
     print(json.dumps(result, indent=2, ensure_ascii=False))
 

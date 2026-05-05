@@ -8,7 +8,6 @@
     from harness._core.exceptions import handle_exception, safe_execute
 """
 import logging
-import sys
 from typing import Any, Callable, Optional, TypeVar
 
 logger = logging.getLogger(__name__)
