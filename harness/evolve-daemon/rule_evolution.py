@@ -4,12 +4,6 @@ import json
 from pathlib import Path
 
 
-def _path(p):
-    if p is None: return Path(".")
-    if isinstance(p, str): return Path(p)
-    return p
-
-
 def evolve_rule(target: str, corrections: list, config: dict, root: Path) -> dict:
     rule_name = target.replace("rule:", "")
     paths = config.get("paths", {})

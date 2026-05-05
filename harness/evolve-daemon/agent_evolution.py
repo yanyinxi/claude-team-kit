@@ -4,12 +4,6 @@ import json
 from pathlib import Path
 
 
-def _path(p):
-    if p is None: return Path(".")
-    if isinstance(p, str): return Path(p)
-    return p
-
-
 def evolve_agent(target: str, corrections: list, config: dict, root: Path) -> dict:
     agent_name = target.replace("agent:", "")
     paths = config.get("paths", {})

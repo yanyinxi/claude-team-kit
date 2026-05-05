@@ -46,7 +46,7 @@
 | E | 异常静默处理模式重复（7 个 hook） | hooks/bin/*.py | ~84 | 🔲 未修复 |
 | F | `daemon.py` `graceful_shutdown()` / `graceful_restart()` 重复 | daemon.py | ~20 | ✅ 已修复（提取 _stop_scheduler + _save_state 共享函数） |
 | G | `analyzer.py` `parse_iso_time()` 同文件重复定义 | analyzer.py | ~12 | ✅ 已修复（提取为模块级函数） |
-| H | 进化函数 `_path()` 重复（3 个 evolution 文件） | skill/agent/rule_evolution.py | ~12 | 🔲 未修复 |
+| H | 进化函数 `_path()` 重复（3 个 evolution 文件） | skill/agent/rule_evolution.py | ~12 | ✅ 已修复（删除未使用的重复函数） |
 
 ### 🟢 低优先级
 

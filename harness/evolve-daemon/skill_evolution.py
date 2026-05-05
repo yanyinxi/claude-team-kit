@@ -4,12 +4,6 @@ import json
 from pathlib import Path
 
 
-def _path(p):
-    if p is None: return Path(".")
-    if isinstance(p, str): return Path(p)
-    return p
-
-
 def evolve_skill(target: str, corrections: list, config: dict, root: Path) -> dict:
     skill_name = target.replace("skill:", "")
     paths = config.get("paths", {})
