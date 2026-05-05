@@ -18,6 +18,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
+import kb_shared
+
 
 from _daemon_config import load_config, _default_config
 from _find_root import find_root
@@ -70,15 +72,10 @@ def collect_metrics(root, proposal_id: str = "", observation_days: int = 7) -> d
     sessions = []
 
     try:
-        for line in sessions_file.read_text().splitlines():
-            if not line.strip():
-                continue
-            try:
-                session = json.loads(line)
-                if session.get("timestamp", "") >= cutoff:
-                    sessions.append(session)
-            except json.JSONDecodeError:
-                continue
+        all_sessions = kb_shared.read_jsonl(sessions_file)
+        for session in all_sessions:
+            if session.get("timestamp", "") >= cutoff:
+                sessions.append(session)
     except OSError:
         return metrics
 
