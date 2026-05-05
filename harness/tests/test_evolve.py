@@ -23,7 +23,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 EVOLVE_DIR = PROJECT_ROOT / "harness" / "evolve-daemon"
 
 # 确保 find_root() 返回正确路径（避免创建 harness/harness/ 幽灵目录）
-os.environ.setdefault("CLAUDE_PROJECT_DIR", str(PROJECT_ROOT))
+os.environ["CLAUDE_PROJECT_DIR"] = str(PROJECT_ROOT)
 
 # 将 evolve-daemon 和 knowledge 加入 path
 sys.path.insert(0, str(EVOLVE_DIR))
@@ -254,11 +254,8 @@ def test_instinct_add_and_read():
     instinct_updater = get_module("instinct_updater")
     with tempfile.TemporaryDirectory() as tmpdir:
         test_record = Path(tmpdir) / "instinct-record.json"
-        # Mock the path
-        original_path = instinct_updater.Path
-        # Patch at module level
-        with patch.object(instinct_updater, "Path", lambda x=tmpdir: Path(x)):
-            # 直接调用 add_pattern
+        # Patch find_root to return tmpdir (正确方式：patch find_root 而非 Path)
+        with patch.object(instinct_updater, "find_root", return_value=Path(tmpdir)):
             try:
                 record_id = instinct_updater.add_pattern(
                     pattern="测试模式",
@@ -275,7 +272,8 @@ def test_instinct_add_and_read():
 def test_instinct_load_init():
     global PASS, FAIL
     instinct_updater = get_module("instinct_updater")
-    data = instinct_updater.load_instinct()
+    with patch.object(instinct_updater, "find_root", return_value=PROJECT_ROOT):
+        data = instinct_updater.load_instinct()
     assert "records" in data
     assert isinstance(data["records"], list)
     PASS += 1
